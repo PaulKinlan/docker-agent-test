@@ -7,12 +7,16 @@ RUN pacman -Syu --noconfirm && \
     git \
     vim \
     sudo \
-    systemd && \
+    systemd \
+    nodejs \
+    npm && \
     pacman -Scc --noconfirm
 
 # No default user — users are created dynamically via create-agent.sh
 # Grant agents group passwordless sudo (constrained per-user later if needed)
 RUN groupadd -f agents
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
 
 # Copy /etc/skel template (applied to every new user created with useradd -m)
 COPY config/skel/ /etc/skel/

@@ -16,13 +16,24 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 .
 ├── Dockerfile              # Main Dockerfile using archlinux:latest
 ├── docker-compose.yml      # Docker Compose configuration
-├── home/                   # User home directory (mounted as /home/user)
+├── Makefile                # Convenience targets for container and agent management
+├── home/                   # Persistent agent home directories (mounted as /home)
 ├── config/
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
 │   │   ├── .bashrc        # Default bash configuration
-│   │   └── .bash_profile  # Default bash login configuration
-│   └── profile.d/         # Files copied to /etc/profile.d (global environment)
-│       └── custom-env.sh  # Custom global environment variables
+│   │   ├── .bash_profile  # Default bash login configuration
+│   │   └── agents.md      # Agent configuration template
+│   ├── profile.d/         # Files copied to /etc/profile.d (global environment)
+│   │   └── agent-env.sh   # Global agent environment setup
+│   └── systemd/           # Systemd service definitions
+│       ├── agent@.service          # Per-agent service template
+│       └── agent-manager.service   # Boot-time reconciliation service
+└── scripts/               # Management scripts (copied to /usr/local/bin)
+    ├── create-agent.sh    # Create a new agent user
+    ├── remove-agent.sh    # Remove an agent user
+    ├── list-agents.sh     # List agents and their status
+    ├── run-agent.sh       # Agent entrypoint (run by systemd)
+    └── agent-manager.sh   # Boot-time service reconciliation
 ```
 
 ## Usage
@@ -52,6 +63,48 @@ docker build -t arch-dev .
 # Run the container with home directory mounted
 docker run -it -v $(pwd)/home:/home/user arch-dev
 ```
+
+### Agent Management Scripts
+
+The `scripts/` directory contains management scripts that are installed to `/usr/local/bin/` inside the container. See [`scripts/README.md`](scripts/README.md) for full documentation.
+
+**Create an agent:**
+```bash
+make create-agent NAME=alice
+```
+Creates a Linux user, populates their home directory from `/etc/skel`, sets up a `.claude/` config directory, and starts a systemd service for the agent.
+
+**List agents:**
+```bash
+make list-agents
+```
+Shows all registered agents with their service status and home directory status.
+
+**View agent logs:**
+```bash
+make agent-logs NAME=alice
+```
+Tails the systemd journal for the specified agent.
+
+**Open a shell as an agent:**
+```bash
+make agent-shell NAME=alice
+```
+
+**Remove an agent:**
+```bash
+make remove-agent NAME=alice
+```
+Stops the agent's service and removes the user. Pass `--keep-home` inside the container to preserve the home directory:
+```bash
+docker-compose exec agent-host remove-agent.sh alice --keep-home
+```
+
+#### How Agents Run
+
+Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. By default, the script logs heartbeats to `/home/<username>/.agent.log`. Replace the heartbeat loop in `run-agent.sh` with your actual agent binary to deploy real workloads.
+
+At container boot, `agent-manager.sh` automatically reconciles all users in the `agents` group, ensuring their services are enabled and started.
 
 ### Customizing Configuration
 

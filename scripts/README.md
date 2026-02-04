@@ -31,6 +31,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `create-agent.sh` | Create a new agent user | `create-agent.sh <username> [--persona <name>] [--api-key <KEY>=<val>]` |
+| `update-agent.sh` | Update an agent's persona | `update-agent.sh <username> --persona <name>` |
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
@@ -80,6 +81,41 @@ make create-agent NAME=bob API_KEY=ANTHROPIC_API_KEY=sk-ant-xxx
 
 # Create agent with persona and API key (inside container)
 create-agent.sh carol --persona researcher --api-key OPENAI_API_KEY=sk-xxx
+```
+
+---
+
+## update-agent.sh
+
+Updates an existing agent's persona. Rebuilds `agents.md`, updates the config, and restarts the agent service so the change takes effect immediately.
+
+**Usage:**
+```bash
+# Inside the container
+update-agent.sh <username> --persona <name>
+
+# From the host via Make
+make update-agent NAME=<username> PERSONA=<name>
+```
+
+**Arguments:**
+- `<username>` (required) — The agent user to update.
+- `--persona <name>` (required) — The new persona to apply. Use `base` to reset to the base persona only (removing any specialist persona).
+
+**What it does:**
+1. Validates the agent user exists and is in the `agents` group
+2. Validates the requested persona exists in `/etc/agent-personas/`
+3. Rebuilds `agents.md` from the base persona + the new specialist persona
+4. Updates `.claude/config.json` with the new persona name
+5. Restarts `agent@<username>.service` to pick up the changes
+
+**Examples:**
+```bash
+# Switch an agent to the researcher persona
+make update-agent NAME=alice PERSONA=researcher
+
+# Reset an agent to base persona only
+make update-agent NAME=alice PERSONA=base
 ```
 
 ---
@@ -266,6 +302,7 @@ The `Makefile` in the project root provides convenience wrappers (the container 
 make create-agent NAME=foo                        # Create agent with base persona
 make create-agent NAME=foo PERSONA=coder          # Create agent with specialist persona
 make create-agent NAME=foo API_KEY=ANTHROPIC_API_KEY=sk-xxx  # Create with API key
+make update-agent NAME=foo PERSONA=coder          # Update an agent's persona
 make remove-agent NAME=foo                        # Remove an agent
 make list-agents                                  # List all agents and status
 make list-personas                                # List available personas

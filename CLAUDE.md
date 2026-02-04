@@ -28,6 +28,7 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 └── scripts/
     ├── README.md               # Scripts documentation
     ├── create-agent.sh         # Create agent user (with optional --persona, --api-key)
+    ├── update-agent.sh         # Update agent persona at runtime
     ├── remove-agent.sh         # Remove agent user
     ├── list-agents.sh          # List agents and status
     ├── manage-api-keys.sh      # Manage per-agent API keys

@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent list-agents list-personas agent-logs agent-shell set-api-key get-api-keys remove-api-key clear-api-keys list-providers
+.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell set-api-key get-api-keys remove-api-key clear-api-keys list-providers
 
 help:
 	@echo "Container management:"
@@ -14,6 +14,7 @@ help:
 	@echo "  make create-agent NAME=foo              - Create agent with base persona"
 	@echo "  make create-agent NAME=foo PERSONA=coder - Create agent with specialist persona"
 	@echo "  make create-agent NAME=foo API_KEY=ANTHROPIC_API_KEY=sk-xxx - Create with API key"
+	@echo "  make update-agent NAME=foo PERSONA=coder - Update agent's persona"
 	@echo "  make remove-agent NAME=foo              - Remove an agent user"
 	@echo "  make list-agents                        - List all agents and their status"
 	@echo "  make list-personas                      - List available personas"
@@ -63,6 +64,15 @@ ifndef NAME
 	$(error NAME is required. Usage: make remove-agent NAME=myagent)
 endif
 	docker-compose exec agent-host /usr/local/bin/remove-agent.sh $(NAME)
+
+update-agent:
+ifndef NAME
+	$(error NAME is required. Usage: make update-agent NAME=myagent PERSONA=coder)
+endif
+ifndef PERSONA
+	$(error PERSONA is required. Usage: make update-agent NAME=myagent PERSONA=coder)
+endif
+	docker-compose exec agent-host /usr/local/bin/update-agent.sh $(NAME) --persona $(PERSONA)
 
 list-agents:
 	docker-compose exec agent-host /usr/local/bin/list-agents.sh

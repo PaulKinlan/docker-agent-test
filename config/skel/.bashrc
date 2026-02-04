@@ -1,16 +1,20 @@
-# .bashrc - User bash configuration
-# This file is copied to each new user's home directory
+# .bashrc — Agent user shell configuration
+# Populated from /etc/skel when the user is created via create-agent.sh
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-# Custom aliases
+# Aliases
 alias ls='ls --color=auto'
 alias ll='ls -lah'
 alias grep='grep --color=auto'
 
-# Custom prompt
+# Prompt — shows username so you know which agent you're in
 PS1='[\u@\h \W]\$ '
 
-# Custom environment variables
+# Editor
 export EDITOR=vim
+
+# Agent environment
+export AGENT_USER="$(whoami)"
+export AGENT_HOME="$HOME"

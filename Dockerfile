@@ -1,7 +1,6 @@
 FROM archlinux:latest
 
-# Update the system and install basic tools
-# Note: This requires network connectivity to Arch package repositories
+# Update the system and install dependencies
 RUN pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
     base-devel \
@@ -11,28 +10,33 @@ RUN pacman -Syu --noconfirm && \
     systemd && \
     pacman -Scc --noconfirm
 
-# Create a user
-RUN useradd -m -s /bin/bash user && \
-    echo "user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# No default user — users are created dynamically via create-agent.sh
+# Grant agents group passwordless sudo (constrained per-user later if needed)
+RUN groupadd -f agents
 
-# Copy custom /etc/skel files (template for new users)
+# Copy /etc/skel template (applied to every new user created with useradd -m)
 COPY config/skel/ /etc/skel/
 
-# Copy custom /etc/profile.d files (global environment scripts)
+# Copy global profile.d scripts (sourced on every interactive login)
 COPY config/profile.d/ /etc/profile.d/
-
-# Set permissions for profile.d scripts
 RUN chmod +x /etc/profile.d/*.sh
 
-# Set up systemd environment variable
+# Copy systemd system-level service units
+COPY config/systemd/ /etc/systemd/system/
+
+# Copy management scripts
+COPY scripts/ /usr/local/bin/
+RUN chmod +x /usr/local/bin/*.sh
+
+# Enable the agent-manager service so it runs at boot
+RUN systemctl enable agent-manager.service
+
+# Systemd environment
 ENV container=docker
 
-# The home directory will be mounted from the host
-VOLUME ["/home/user"]
+# Expose /home so all agent home dirs are visible from the host
+VOLUME ["/home"]
 
-# Switch to the user
-USER user
-WORKDIR /home/user
-
-# Default command
-CMD ["/bin/bash"]
+# Systemd must run as root (PID 1)
+STOPSIGNAL SIGRTMIN+3
+CMD ["/usr/lib/systemd/systemd"]

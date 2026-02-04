@@ -1,19 +1,21 @@
 version: '3.8'
 
 services:
-  arch-dev:
+  agent-host:
     build:
       context: .
       dockerfile: Dockerfile
-    image: arch-dev:latest
-    container_name: arch-dev-container
-    # Mount the home directory from the repository
+    image: agent-host:latest
+    container_name: agent-host
     volumes:
-      - ./home:/home/user
-    # Keep container running
+      # Mount entire /home so every agent's home dir is visible on the host
+      - ./home:/home
+    # Systemd needs these tmpfs mounts
+    tmpfs:
+      - /run
+      - /run/lock
+    # Required for systemd
+    privileged: true
+    # Keep container alive
     stdin_open: true
     tty: true
-    # Enable systemd capabilities
-    privileged: true
-    # Optional: specify systemd as the init process
-    # command: /usr/lib/systemd/systemd

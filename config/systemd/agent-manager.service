@@ -1,0 +1,11 @@
+[Unit]
+Description=Start agents for all registered users on boot
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/agent-manager.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

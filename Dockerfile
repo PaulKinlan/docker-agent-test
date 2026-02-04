@@ -1,20 +1,25 @@
 FROM archlinux:latest
 
 # Update the system and install dependencies
+# Note: sudo is pulled in by base-devel but agents are explicitly denied sudo access
 RUN pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
     base-devel \
     git \
     vim \
-    sudo \
     systemd \
     nodejs \
     npm && \
     pacman -Scc --noconfirm
 
 # No default user — users are created dynamically via create-agent.sh
-# Grant agents group passwordless sudo (constrained per-user later if needed)
 RUN groupadd -f agents
+
+# Explicitly deny sudo access for all agent users
+RUN mkdir -p /etc/sudoers.d && \
+    echo '%agents ALL=(ALL) !ALL' > /etc/sudoers.d/deny-agents && \
+    chmod 440 /etc/sudoers.d/deny-agents
+
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 

@@ -36,7 +36,10 @@ echo "Creating agent user: $USERNAME"
 
 # 1. Create user with home directory (populated from /etc/skel)
 useradd -m -s /bin/bash -G agents "$USERNAME"
-echo "  -> User created with home at /home/$USERNAME"
+
+# Lock down home directory so other agents cannot read it
+chmod 700 "/home/$USERNAME"
+echo "  -> User created with home at /home/$USERNAME (mode 700)"
 
 # 2. Create .claude/ directory owned by root, readable by the user
 CLAUDE_DIR="/home/$USERNAME/.claude"

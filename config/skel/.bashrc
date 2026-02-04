@@ -4,6 +4,9 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
+# Restrictive umask: new files are private to this user (no group/other access)
+umask 077
+
 # Aliases
 alias ls='ls --color=auto'
 alias ll='ls -lah'

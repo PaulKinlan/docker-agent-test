@@ -4,7 +4,6 @@
 
 # Documentation (not needed in image)
 *.md
-!config/README.md
 
 # Home directory contents (will be mounted, not copied)
 home/*

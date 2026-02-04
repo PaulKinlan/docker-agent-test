@@ -91,7 +91,7 @@ The `./home` directory in the repository is mounted as `/home/user` in the conta
 
 ## Notes
 
-- The container runs with a non-root user named `user` with sudo privileges
+- Agent users run with restricted permissions: no sudo, read-only filesystem (except own home), private /tmp, and no capability to escalate privileges. Only root can install packages or modify the system.
 - The home directory is persisted outside the container in the repository
 - Configuration files can be edited in the repository and will be applied when the image is rebuilt
 - Systemd is available but requires privileged mode (enabled in docker-compose.yml)

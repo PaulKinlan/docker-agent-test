@@ -16,9 +16,39 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=agent-%i
 
+# ── Security hardening ──────────────────────────────────────
+# Prevent privilege escalation
+NoNewPrivileges=true
+
+# Make the entire filesystem read-only except the agent's own home
+ProtectSystem=strict
+ReadWritePaths=/home/%i
+
+# Private /tmp so agents cannot see each other's temp files
+PrivateTmp=true
+
+# Prevent modification of kernel tunables, modules, and control groups
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Restrict the set of capabilities to empty (agent needs none)
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Prevent gaining capabilities via setuid/setgid binaries
+RestrictSUIDSGID=true
+
+# Restrict address families to only what's needed (IPv4, IPv6, Unix sockets)
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Prevent writing to or mounting new filesystems
+ProtectKernelLogs=true
+RestrictNamespaces=true
+
 # Basic resource constraints (tune as needed)
-# MemoryMax=512M
-# CPUQuota=50%
+MemoryMax=512M
+CPUQuota=50%
 
 [Install]
 WantedBy=multi-user.target

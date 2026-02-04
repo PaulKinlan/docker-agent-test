@@ -2,10 +2,12 @@
 .git
 .gitignore
 
-# Documentation (not needed in image)
-*.md
+# Documentation (not needed in the image)
+README.md
+USAGE.md
+LICENSE
 
-# Home directory contents (will be mounted, not copied)
+# Home directory contents (mounted at runtime, not baked in)
 home/*
 !home/.gitkeep
 
@@ -19,10 +21,8 @@ docker-compose.yml
 .vscode
 .idea
 
-# Logs
+# Logs and temp
 *.log
-
-# Temporary files
 *.tmp
 *.temp
 .DS_Store

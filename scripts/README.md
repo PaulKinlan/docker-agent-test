@@ -2,7 +2,29 @@
 
 Management scripts for the multi-user agent hosting system. These scripts are copied to `/usr/local/bin/` inside the container during the Docker build.
 
-All scripts can be run directly inside the container or via the `Makefile` convenience targets from the host.
+## Running From the Host
+
+The management scripts (`create-agent.sh`, `remove-agent.sh`, `list-agents.sh`) detect whether they're running inside the container or on the host. When run from the host, they automatically proxy themselves through `docker exec` into the running container — no need to open a shell first.
+
+```bash
+# Run directly from the host — no docker exec needed
+./scripts/create-agent.sh alice --persona coder
+./scripts/list-agents.sh
+./scripts/remove-agent.sh alice
+
+# Or add scripts/ to your PATH for convenience
+export PATH="$PWD/scripts:$PATH"
+create-agent.sh alice
+list-agents.sh
+```
+
+By default, commands target the container named `agent-host`. Override this with the `AGENT_HOST_CONTAINER` environment variable:
+
+```bash
+AGENT_HOST_CONTAINER=my-container ./scripts/create-agent.sh alice
+```
+
+You can also still use the Makefile targets or run the scripts inside the container directly.
 
 ## Scripts Overview
 

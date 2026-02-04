@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent list-agents agent-logs agent-shell
+.PHONY: help build up down restart shell logs clean create-agent remove-agent list-agents list-personas agent-logs agent-shell
 
 help:
 	@echo "Container management:"
@@ -11,11 +11,13 @@ help:
 	@echo "  make clean                  - Remove image and cleanup"
 	@echo ""
 	@echo "Agent management (container must be running):"
-	@echo "  make create-agent NAME=foo  - Create a new agent user"
-	@echo "  make remove-agent NAME=foo  - Remove an agent user"
-	@echo "  make list-agents            - List all agents and their status"
-	@echo "  make agent-logs NAME=foo    - Tail logs for an agent"
-	@echo "  make agent-shell NAME=foo   - Open a shell as an agent user"
+	@echo "  make create-agent NAME=foo              - Create agent with base persona"
+	@echo "  make create-agent NAME=foo PERSONA=coder - Create agent with specialist persona"
+	@echo "  make remove-agent NAME=foo              - Remove an agent user"
+	@echo "  make list-agents                        - List all agents and their status"
+	@echo "  make list-personas                      - List available personas"
+	@echo "  make agent-logs NAME=foo                - Tail logs for an agent"
+	@echo "  make agent-shell NAME=foo               - Open a shell as an agent user"
 
 build:
 	docker-compose build
@@ -42,9 +44,13 @@ clean: down
 
 create-agent:
 ifndef NAME
-	$(error NAME is required. Usage: make create-agent NAME=myagent)
+	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder])
 endif
+ifdef PERSONA
+	docker-compose exec agent-host /usr/local/bin/create-agent.sh $(NAME) --persona $(PERSONA)
+else
 	docker-compose exec agent-host /usr/local/bin/create-agent.sh $(NAME)
+endif
 
 remove-agent:
 ifndef NAME
@@ -54,6 +60,19 @@ endif
 
 list-agents:
 	docker-compose exec agent-host /usr/local/bin/list-agents.sh
+
+list-personas:
+	@echo "Available personas (in config/personas/):"
+	@echo ""
+	@echo "  base       - Default persona applied to all agents"
+	@for f in config/personas/*.md; do \
+		name=$$(basename "$$f" .md); \
+		if [ "$$name" != "base" ]; then \
+			echo "  $$name"; \
+		fi; \
+	done
+	@echo ""
+	@echo "Usage: make create-agent NAME=myagent PERSONA=<name>"
 
 agent-logs:
 ifndef NAME

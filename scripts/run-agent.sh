@@ -33,6 +33,11 @@ fi
 CLAUDE_CONFIG="/home/${AGENT_USER}/.claude/config.json"
 if [[ -f "$CLAUDE_CONFIG" ]]; then
     log "  Claude:  $CLAUDE_CONFIG (found)"
+    # Read persona from config
+    PERSONA="$(grep -o '"persona"[[:space:]]*:[[:space:]]*"[^"]*"' "$CLAUDE_CONFIG" | head -1 | sed 's/.*"persona"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/')" || true
+    if [[ -n "${PERSONA:-}" ]]; then
+        log "  Persona: $PERSONA"
+    fi
 else
     log "  Claude:  $CLAUDE_CONFIG (not found)"
 fi

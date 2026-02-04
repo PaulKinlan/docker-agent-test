@@ -23,6 +23,9 @@ RUN mkdir -p /etc/sudoers.d && \
 # Install Claude Code globally
 RUN npm install -g @anthropic-ai/claude-code
 
+# Copy persona definitions (used by create-agent.sh to build agents.md)
+COPY config/personas/ /etc/agent-personas/
+
 # Copy /etc/skel template (applied to every new user created with useradd -m)
 COPY config/skel/ /etc/skel/
 

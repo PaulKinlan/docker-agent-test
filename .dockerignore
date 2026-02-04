@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Documentation (not needed in image)
+*.md
+!config/README.md
+
+# Home directory contents (will be mounted, not copied)
+home/*
+!home/.gitkeep
+
+# Docker files
+docker-compose.yml
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store

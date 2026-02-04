@@ -8,8 +8,13 @@ RUN pacman -Syu --noconfirm && \
     git \
     vim \
     sudo \
-    systemd && \
+    systemd \
+    nodejs \
+    npm && \
     pacman -Scc --noconfirm
+
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
 
 # Create a user
 RUN useradd -m -s /bin/bash user && \

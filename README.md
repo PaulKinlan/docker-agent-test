@@ -36,6 +36,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │       └── api-keys-sync.service   # Boot-time API key sync service
 └── scripts/               # Management scripts (copied to /usr/local/bin)
     ├── create-agent.sh    # Create a new agent user
+    ├── update-agent.sh    # Update an agent's persona
     ├── remove-agent.sh    # Remove an agent user
     ├── list-agents.sh     # List agents and their status
     ├── manage-api-keys.sh # Manage per-agent API keys
@@ -81,6 +82,7 @@ The management scripts can be run **directly from the host** or inside the conta
 **From the host (direct):**
 ```bash
 ./scripts/create-agent.sh alice --persona coder
+./scripts/update-agent.sh alice --persona researcher
 ./scripts/list-agents.sh
 ./scripts/remove-agent.sh alice --keep-home
 ```
@@ -88,6 +90,7 @@ The management scripts can be run **directly from the host** or inside the conta
 **From the host (via Make):**
 ```bash
 make create-agent NAME=alice
+make update-agent NAME=alice PERSONA=researcher
 make list-agents
 make remove-agent NAME=alice
 ```
@@ -95,6 +98,7 @@ make remove-agent NAME=alice
 **Inside the container:**
 ```bash
 create-agent.sh alice
+update-agent.sh alice --persona researcher
 list-agents.sh
 remove-agent.sh alice
 ```

@@ -5,6 +5,14 @@
 
 set -euo pipefail
 
+# --- Host/container detection ---
+# If not running inside the container, proxy the command through docker exec.
+# Override the container name with AGENT_HOST_CONTAINER if needed.
+if [[ ! -f /.dockerenv ]]; then
+    CONTAINER="${AGENT_HOST_CONTAINER:-agent-host}"
+    exec docker exec "$CONTAINER" /usr/local/bin/"$(basename "$0")" "$@"
+fi
+
 AGENTS_MEMBERS=$(getent group agents 2>/dev/null | cut -d: -f4 | tr ',' ' ')
 
 if [[ -z "$AGENTS_MEMBERS" ]]; then

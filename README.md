@@ -68,17 +68,33 @@ docker run -it -v $(pwd)/home:/home/user arch-dev
 
 The `scripts/` directory contains management scripts that are installed to `/usr/local/bin/` inside the container. See [`scripts/README.md`](scripts/README.md) for full documentation.
 
-**Create an agent:**
+The management scripts can be run **directly from the host** or inside the container — they auto-detect their environment and proxy through `docker exec` when needed.
+
+**From the host (direct):**
+```bash
+./scripts/create-agent.sh alice --persona coder
+./scripts/list-agents.sh
+./scripts/remove-agent.sh alice --keep-home
+```
+
+**From the host (via Make):**
 ```bash
 make create-agent NAME=alice
-```
-Creates a Linux user, populates their home directory from `/etc/skel`, sets up a `.claude/` config directory, and starts a systemd service for the agent.
-
-**List agents:**
-```bash
 make list-agents
+make remove-agent NAME=alice
 ```
-Shows all registered agents with their service status and home directory status.
+
+**Inside the container:**
+```bash
+create-agent.sh alice
+list-agents.sh
+remove-agent.sh alice
+```
+
+To target a different container name, set `AGENT_HOST_CONTAINER`:
+```bash
+AGENT_HOST_CONTAINER=my-container ./scripts/create-agent.sh alice
+```
 
 **View agent logs:**
 ```bash
@@ -89,15 +105,6 @@ Tails the systemd journal for the specified agent.
 **Open a shell as an agent:**
 ```bash
 make agent-shell NAME=alice
-```
-
-**Remove an agent:**
-```bash
-make remove-agent NAME=alice
-```
-Stops the agent's service and removes the user. Pass `--keep-home` inside the container to preserve the home directory:
-```bash
-docker-compose exec agent-host remove-agent.sh alice --keep-home
 ```
 
 #### How Agents Run

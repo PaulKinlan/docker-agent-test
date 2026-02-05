@@ -27,7 +27,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
 │   │   ├── .bashrc        # Default bash configuration
 │   │   ├── .bash_profile  # Default bash login configuration
-│   │   └── agents.md      # Agent configuration template
+│   │   ├── CLAUDE.md      # Default operating instructions for agents
+│   │   └── agents.md      # Agent persona configuration template
 │   ├── profile.d/         # Files copied to /etc/profile.d (global environment)
 │   │   └── agent-env.sh   # Global agent environment setup
 │   └── systemd/           # Systemd service definitions

@@ -20,17 +20,20 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 ├── home/                       # Persistent agent home directories (mounted as /home)
 ├── config/
 │   ├── README.md               # Configuration documentation
+│   ├── api-keys/               # API key configuration -> /etc/agent-api-keys
 │   ├── skel/                   # Template for new agent homes -> /etc/skel
 │   ├── profile.d/              # Global environment scripts -> /etc/profile.d
 │   ├── personas/               # Agent persona definitions -> /etc/agent-personas
 │   └── systemd/                # Systemd service files
 └── scripts/
     ├── README.md               # Scripts documentation
-    ├── create-agent.sh         # Create agent user (with optional --persona)
+    ├── create-agent.sh         # Create agent user (with optional --persona, --api-key)
     ├── remove-agent.sh         # Remove agent user
     ├── list-agents.sh          # List agents and status
+    ├── manage-api-keys.sh      # Manage per-agent API keys
     ├── run-agent.sh            # Agent entrypoint (called by systemd)
-    └── agent-manager.sh        # Boot-time service reconciliation
+    ├── agent-manager.sh        # Boot-time service reconciliation
+    └── sync-api-keys.sh        # Boot-time API key environment sync
 ```
 
 ## Documentation Requirements
@@ -45,6 +48,7 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 | Makefile targets | `scripts/README.md` (Makefile Targets section) and `README.md` (Agent Management Scripts section) |
 | Files in `config/` | `config/README.md` and `README.md` (Directory Structure and Customizing Configuration sections) |
 | Persona files in `config/personas/` | `config/README.md` and `README.md` |
+| API key configuration in `config/api-keys/` | `config/README.md` and `README.md` (API Key Management section) |
 | Dockerfile or docker-compose.yml | `README.md` and `USAGE.md` |
 | New top-level files or directories | `README.md` (Directory Structure section) |
 | Changes to the build or run process | `README.md` (Usage section) and `USAGE.md` |
@@ -159,3 +163,18 @@ There are no automated tests. Verify changes manually by building the image and 
 1. Edit `config/systemd/agent@.service` for service-level changes (resource limits, security, restart policy).
 2. Edit `scripts/run-agent.sh` for runtime behavior changes.
 3. Update `scripts/README.md` and `README.md` to reflect the changes.
+
+### Managing API keys
+
+API keys are loaded at agent startup in two layers:
+1. **Global keys** from `/etc/agent-api-keys/global.env` (applies to all agents)
+2. **Per-agent keys** from `~/.claude/api-keys.env` (overrides global)
+
+To add a new supported provider:
+1. Add the environment variable name to `KNOWN_PROVIDERS` array in `scripts/manage-api-keys.sh`
+2. Add the variable to `KNOWN_KEYS` array in `scripts/sync-api-keys.sh`
+3. Add the passthrough in `docker-compose.yml` environment section
+4. Document in `config/api-keys/global.env.template`
+5. Update `config/README.md` supported providers list
+
+Security: API key files are root-owned, agent-readable (mode 640). Per-agent keys in `.claude/` directory inherit root ownership.

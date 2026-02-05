@@ -19,3 +19,32 @@ services:
     # Keep container alive
     stdin_open: true
     tty: true
+    # API key passthrough from host environment
+    # These are written to /etc/agent-api-keys/global.env at container start
+    # Set any of these on your host to make them available to all agents
+    environment:
+      # Anthropic
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Google
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Mistral
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      # Other providers
+      - COHERE_API_KEY=${COHERE_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - FIREWORKS_API_KEY=${FIREWORKS_API_KEY:-}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      - HF_TOKEN=${HF_TOKEN:-}
+      # AWS Bedrock
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-}
+      # Azure OpenAI
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}

@@ -1,7 +1,7 @@
 #!/bin/bash
-# create-agent.sh — Create a new agent user with optional persona
+# create-agent.sh — Create a new agent user with optional persona and API keys
 #
-# Usage: create-agent.sh <username> [--persona <name>]
+# Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]...
 #
 # This script:
 #   1. Creates a Linux user (home dir populated from /etc/skel)
@@ -9,13 +9,22 @@
 #   3. Builds the agent's agents.md from base persona + optional specialist persona
 #   4. Creates a root-owned .claude/ directory in the user's home
 #      (readable by the user, writable only by root)
-#   5. Enables and starts the agent@<username> systemd service
+#   5. Configures per-agent API keys if provided
+#   6. Enables and starts the agent@<username> systemd service
+#
+# Options:
+#   --persona <name>        Apply a specialist persona (e.g., coder, researcher)
+#   --api-key <PROVIDER>=<key>  Set an API key for this agent (can be repeated)
 #
 # Persona resolution:
 #   - The base persona (/etc/agent-personas/base.md) is always applied
 #   - If --persona <name> is given, the matching file from /etc/agent-personas/<name>.md
 #     is appended after the base persona
 #   - Without --persona, the agent gets only the base persona
+#
+# API key examples:
+#   create-agent.sh alice --api-key ANTHROPIC_API_KEY=sk-ant-xxx
+#   create-agent.sh bob --persona coder --api-key OPENAI_API_KEY=sk-xxx
 
 set -euo pipefail
 
@@ -32,21 +41,35 @@ PERSONAS_DIR="/etc/agent-personas"
 # --- Parse arguments ---
 USERNAME=""
 PERSONA=""
+API_KEYS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --persona)
             if [[ -z "${2:-}" ]]; then
                 echo "Error: --persona requires a value." >&2
-                echo "Usage: create-agent.sh <username> [--persona <name>]" >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
                 exit 1
             fi
             PERSONA="$2"
             shift 2
             ;;
+        --api-key)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --api-key requires a value in PROVIDER=key format." >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
+                exit 1
+            fi
+            if [[ ! "$2" =~ ^[A-Z_][A-Z0-9_]*=.+$ ]]; then
+                echo "Error: Invalid API key format '$2'. Use PROVIDER=key format (e.g., ANTHROPIC_API_KEY=sk-xxx)." >&2
+                exit 1
+            fi
+            API_KEYS+=("$2")
+            shift 2
+            ;;
         -*)
             echo "Error: Unknown option '$1'." >&2
-            echo "Usage: create-agent.sh <username> [--persona <name>]" >&2
+            echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
             exit 1
             ;;
         *)
@@ -54,7 +77,7 @@ while [[ $# -gt 0 ]]; do
                 USERNAME="$1"
             else
                 echo "Error: Unexpected argument '$1'." >&2
-                echo "Usage: create-agent.sh <username> [--persona <name>]" >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
                 exit 1
             fi
             shift
@@ -63,7 +86,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$USERNAME" ]]; then
-    echo "Usage: create-agent.sh <username> [--persona <name>]" >&2
+    echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
     exit 1
 fi
 
@@ -155,7 +178,26 @@ chown root:root "$CLAUDE_DIR/config.json"
 chmod 644 "$CLAUDE_DIR/config.json"
 echo "  -> .claude/ directory created (root-owned, user-readable)"
 
-# 4. Enable and start the agent service for this user
+# 4. Configure per-agent API keys if provided
+if [[ ${#API_KEYS[@]} -gt 0 ]]; then
+    API_KEYS_FILE="$CLAUDE_DIR/api-keys.env"
+    {
+        echo "# API keys for agent: $USERNAME"
+        echo "# Managed by create-agent.sh - use manage-api-keys.sh to modify"
+        echo "# Generated: $(date -Iseconds)"
+        echo ""
+        for key_pair in "${API_KEYS[@]}"; do
+            echo "$key_pair"
+        done
+    } > "$API_KEYS_FILE"
+    chown root:root "$API_KEYS_FILE"
+    chmod 640 "$API_KEYS_FILE"
+    # Allow the agent user to read the file via group
+    chgrp "$(id -gn "$USERNAME")" "$API_KEYS_FILE"
+    echo "  -> API keys configured (${#API_KEYS[@]} key(s))"
+fi
+
+# 5. Enable and start the agent service for this user
 systemctl enable "agent@${USERNAME}.service"
 systemctl start "agent@${USERNAME}.service"
 echo "  -> agent@${USERNAME}.service enabled and started"

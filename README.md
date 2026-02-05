@@ -9,6 +9,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Customizable `/etc/skel` files for new users
 - Customizable `/etc/profile.d` scripts for global environment setup
 - Systemd support enabled
+- Multi-LLM API key management (global and per-agent)
+- Support for Anthropic, OpenAI, Google, Mistral, and many other providers
 
 ## Directory Structure
 
@@ -19,6 +21,9 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 ├── Makefile                # Convenience targets for container and agent management
 ├── home/                   # Persistent agent home directories (mounted as /home)
 ├── config/
+│   ├── api-keys/          # API key configuration (copied to /etc/agent-api-keys)
+│   │   ├── global.env.template  # Template for global API keys
+│   │   └── .gitignore           # Prevents committing actual keys
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
 │   │   ├── .bashrc        # Default bash configuration
 │   │   ├── .bash_profile  # Default bash login configuration
@@ -27,13 +32,16 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   │   └── agent-env.sh   # Global agent environment setup
 │   └── systemd/           # Systemd service definitions
 │       ├── agent@.service          # Per-agent service template
-│       └── agent-manager.service   # Boot-time reconciliation service
+│       ├── agent-manager.service   # Boot-time reconciliation service
+│       └── api-keys-sync.service   # Boot-time API key sync service
 └── scripts/               # Management scripts (copied to /usr/local/bin)
     ├── create-agent.sh    # Create a new agent user
     ├── remove-agent.sh    # Remove an agent user
     ├── list-agents.sh     # List agents and their status
+    ├── manage-api-keys.sh # Manage per-agent API keys
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
-    └── agent-manager.sh   # Boot-time service reconciliation
+    ├── agent-manager.sh   # Boot-time service reconciliation
+    └── sync-api-keys.sh   # Boot-time API key environment sync
 ```
 
 ## Usage
@@ -106,6 +114,51 @@ Tails the systemd journal for the specified agent.
 ```bash
 make agent-shell NAME=alice
 ```
+
+### API Key Management
+
+The system supports multiple LLM providers with both global (all agents) and per-agent API key configuration.
+
+#### Global API Keys (All Agents)
+
+Option 1: Pass from host environment (recommended):
+```bash
+# Set on host before starting container
+export ANTHROPIC_API_KEY=sk-ant-xxx
+export OPENAI_API_KEY=sk-xxx
+docker-compose up -d
+```
+
+Option 2: Bake into image (for private images):
+```bash
+cp config/api-keys/global.env.template config/api-keys/global.env
+# Edit global.env to set your keys
+docker-compose build
+```
+
+#### Per-Agent API Keys
+
+Set keys when creating an agent:
+```bash
+make create-agent NAME=alice API_KEY=ANTHROPIC_API_KEY=sk-ant-xxx
+```
+
+Or manage keys for existing agents:
+```bash
+make set-api-key NAME=alice KEY=ANTHROPIC_API_KEY=sk-ant-xxx
+make set-api-key NAME=alice KEY=OPENAI_API_KEY=sk-xxx
+make get-api-keys NAME=alice
+make remove-api-key NAME=alice KEY=OPENAI_API_KEY
+make clear-api-keys NAME=alice
+```
+
+Per-agent keys override global keys. See [`scripts/README.md`](scripts/README.md) for full documentation.
+
+#### Supported Providers
+
+Anthropic, OpenAI, Google/Gemini, Mistral, Cohere, Groq, Together.ai, Fireworks.ai, Perplexity, Replicate, Hugging Face, AWS Bedrock, Azure OpenAI.
+
+Run `make list-providers` to see all supported provider names.
 
 #### How Agents Run
 

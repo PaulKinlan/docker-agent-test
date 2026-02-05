@@ -1,0 +1,4 @@
+# Ignore actual API key files - only keep templates
+global.env
+*.env
+!*.env.template

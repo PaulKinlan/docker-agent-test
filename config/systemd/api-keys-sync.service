@@ -1,0 +1,12 @@
+[Unit]
+Description=Sync API keys from environment to global config
+Before=agent-manager.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sync-api-keys.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

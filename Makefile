@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent list-agents list-personas agent-logs agent-shell
+.PHONY: help build up down restart shell logs clean create-agent remove-agent list-agents list-personas agent-logs agent-shell set-api-key get-api-keys remove-api-key clear-api-keys list-providers
 
 help:
 	@echo "Container management:"
@@ -13,11 +13,19 @@ help:
 	@echo "Agent management (container must be running):"
 	@echo "  make create-agent NAME=foo              - Create agent with base persona"
 	@echo "  make create-agent NAME=foo PERSONA=coder - Create agent with specialist persona"
+	@echo "  make create-agent NAME=foo API_KEY=ANTHROPIC_API_KEY=sk-xxx - Create with API key"
 	@echo "  make remove-agent NAME=foo              - Remove an agent user"
 	@echo "  make list-agents                        - List all agents and their status"
 	@echo "  make list-personas                      - List available personas"
 	@echo "  make agent-logs NAME=foo                - Tail logs for an agent"
 	@echo "  make agent-shell NAME=foo               - Open a shell as an agent user"
+	@echo ""
+	@echo "API key management (container must be running):"
+	@echo "  make set-api-key NAME=foo KEY=ANTHROPIC_API_KEY=sk-xxx - Set API key for agent"
+	@echo "  make get-api-keys NAME=foo              - Show API keys for agent (masked)"
+	@echo "  make remove-api-key NAME=foo KEY=OPENAI_API_KEY - Remove API key from agent"
+	@echo "  make clear-api-keys NAME=foo            - Remove all API keys from agent"
+	@echo "  make list-providers                     - List known API key provider names"
 
 build:
 	docker-compose build
@@ -44,13 +52,11 @@ clean: down
 
 create-agent:
 ifndef NAME
-	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder])
+	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder] [API_KEY=PROVIDER=key])
 endif
-ifdef PERSONA
-	docker-compose exec agent-host /usr/local/bin/create-agent.sh $(NAME) --persona $(PERSONA)
-else
-	docker-compose exec agent-host /usr/local/bin/create-agent.sh $(NAME)
-endif
+	docker-compose exec agent-host /usr/local/bin/create-agent.sh $(NAME) \
+		$(if $(PERSONA),--persona $(PERSONA)) \
+		$(if $(API_KEY),--api-key $(API_KEY))
 
 remove-agent:
 ifndef NAME
@@ -85,3 +91,38 @@ ifndef NAME
 	$(error NAME is required. Usage: make agent-shell NAME=myagent)
 endif
 	docker-compose exec --user $(NAME) agent-host /bin/bash
+
+# --- API key management ---
+
+set-api-key:
+ifndef NAME
+	$(error NAME is required. Usage: make set-api-key NAME=myagent KEY=PROVIDER=value)
+endif
+ifndef KEY
+	$(error KEY is required. Usage: make set-api-key NAME=myagent KEY=ANTHROPIC_API_KEY=sk-xxx)
+endif
+	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh set $(NAME) $(KEY)
+
+get-api-keys:
+ifndef NAME
+	$(error NAME is required. Usage: make get-api-keys NAME=myagent)
+endif
+	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh get $(NAME)
+
+remove-api-key:
+ifndef NAME
+	$(error NAME is required. Usage: make remove-api-key NAME=myagent KEY=PROVIDER)
+endif
+ifndef KEY
+	$(error KEY is required. Usage: make remove-api-key NAME=myagent KEY=OPENAI_API_KEY)
+endif
+	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh remove $(NAME) $(KEY)
+
+clear-api-keys:
+ifndef NAME
+	$(error NAME is required. Usage: make clear-api-keys NAME=myagent)
+endif
+	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh clear $(NAME)
+
+list-providers:
+	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh list-providers

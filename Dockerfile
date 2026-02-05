@@ -33,6 +33,14 @@ COPY config/skel/ /etc/skel/
 COPY config/profile.d/ /etc/profile.d/
 RUN chmod +x /etc/profile.d/*.sh
 
+# Copy API keys configuration directory
+# If global.env exists, rename to .static so it can be merged with env vars at boot
+COPY config/api-keys/ /etc/agent-api-keys/
+RUN if [ -f /etc/agent-api-keys/global.env ]; then \
+        mv /etc/agent-api-keys/global.env /etc/agent-api-keys/global.env.static; \
+    fi && \
+    chmod 700 /etc/agent-api-keys
+
 # Copy systemd system-level service units
 COPY config/systemd/ /etc/systemd/system/
 
@@ -40,8 +48,9 @@ COPY config/systemd/ /etc/systemd/system/
 COPY scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/*.sh
 
-# Enable the agent-manager service so it runs at boot
-RUN systemctl enable agent-manager.service
+# Enable boot-time services
+RUN systemctl enable api-keys-sync.service && \
+    systemctl enable agent-manager.service
 
 # Systemd environment
 ENV container=docker

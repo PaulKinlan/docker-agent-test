@@ -4,6 +4,48 @@ This directory contains configuration files that are copied into the Docker imag
 
 ## Directory Structure
 
+### `api-keys/` - API Key Configuration
+
+Files in this directory are copied to `/etc/agent-api-keys/` in the container. Used for global LLM API key configuration.
+
+**Current files:**
+- `global.env.template` - Template showing supported API key providers
+- `.gitignore` - Prevents committing actual API keys
+
+**How to configure global API keys:**
+
+Option 1: Bake keys into the image (for private images):
+1. Copy `global.env.template` to `global.env`
+2. Uncomment and set the API keys you need
+3. Rebuild the Docker image: `docker-compose build`
+
+Option 2: Pass keys at runtime via environment variables:
+```bash
+export ANTHROPIC_API_KEY=sk-ant-xxx
+export OPENAI_API_KEY=sk-xxx
+docker-compose up -d
+```
+
+Environment variables are automatically synced to `/etc/agent-api-keys/global.env` at container startup.
+
+**Supported providers:**
+- Anthropic (`ANTHROPIC_API_KEY`)
+- OpenAI (`OPENAI_API_KEY`)
+- Google/Gemini (`GOOGLE_API_KEY`, `GEMINI_API_KEY`)
+- Mistral (`MISTRAL_API_KEY`)
+- Cohere (`COHERE_API_KEY`)
+- Groq (`GROQ_API_KEY`)
+- Together.ai (`TOGETHER_API_KEY`)
+- Fireworks.ai (`FIREWORKS_API_KEY`)
+- Perplexity (`PERPLEXITY_API_KEY`)
+- Replicate (`REPLICATE_API_TOKEN`)
+- Hugging Face (`HUGGINGFACE_API_KEY`, `HF_TOKEN`)
+- AWS Bedrock (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`)
+- Azure OpenAI (`AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`)
+
+**Per-agent API keys:**
+Use `manage-api-keys.sh` or create agents with the `--api-key` flag. Per-agent keys override global keys. See [`scripts/README.md`](../scripts/README.md) for details.
+
 ### `skel/` - User Template Files
 
 Files in this directory are copied to `/etc/skel/` in the container. These files serve as templates for new user home directories.

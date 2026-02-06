@@ -9,7 +9,9 @@ RUN pacman -Syu --noconfirm && \
     vim \
     systemd \
     nodejs \
-    npm && \
+    npm \
+    s-nail \
+    opensmtpd && \
     pacman -Scc --noconfirm
 
 # No default user — users are created dynamically via create-agent.sh
@@ -48,9 +50,15 @@ COPY config/systemd/ /etc/systemd/system/
 COPY scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/*.sh
 
+# Configure opensmtpd for local-only mail delivery
+RUN echo 'listen on localhost' > /etc/smtpd/smtpd.conf && \
+    echo 'action "local" mbox alias <aliases>' >> /etc/smtpd/smtpd.conf && \
+    echo 'match from local for local action "local"' >> /etc/smtpd/smtpd.conf
+
 # Enable boot-time services
 RUN systemctl enable api-keys-sync.service && \
-    systemctl enable agent-manager.service
+    systemctl enable agent-manager.service && \
+    systemctl enable smtpd.service
 
 # Systemd environment
 ENV container=docker

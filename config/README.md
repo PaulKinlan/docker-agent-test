@@ -74,7 +74,7 @@ Files in this directory are copied to `/etc/skel/` in the container. These files
 Files in this directory are copied to `/etc/profile.d/` in the container. These scripts are executed for all users during login.
 
 **Current files:**
-- `custom-env.sh` - Custom global environment variables and startup messages
+- `agent-env.sh` - Global agent environment setup (platform vars, umask, PATH)
 
 **How to use:**
 1. Create `.sh` files in this directory

@@ -11,6 +11,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Systemd support enabled
 - Multi-LLM API key management (global and per-agent)
 - Support for Anthropic, OpenAI, Google, Mistral, and many other providers
+- Local mail system for inter-agent communication (opensmtpd + s-nail)
 
 ## Directory Structure
 

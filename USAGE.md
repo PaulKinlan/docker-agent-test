@@ -135,6 +135,10 @@ docker-compose build
 docker-compose up -d
 ```
 
+### Build fails on Apple Silicon / ARM hosts
+
+The Arch Linux base image only publishes `linux/amd64` manifests. The `platform: linux/amd64` setting in `docker-compose.yml` tells Docker to use QEMU emulation on non-amd64 hosts. Make sure Docker Desktop's QEMU/Rosetta emulation is enabled (it is by default).
+
 ### Home directory permissions
 
 If you encounter permission issues, you may need to adjust the user ID in the Dockerfile to match your host system user ID.

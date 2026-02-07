@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   agent-host:
     build:
       context: .
       dockerfile: Dockerfile
     image: agent-host:latest
+    platform: linux/amd64
     container_name: agent-host
     volumes:
       # Mount entire /home so every agent's home dir is visible on the host

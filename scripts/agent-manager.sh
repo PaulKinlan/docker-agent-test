@@ -7,15 +7,20 @@
 
 set -euo pipefail
 
+echo "agent-manager: Starting at $(date -Iseconds)"
 echo "agent-manager: Reconciling agent services..."
 
 # Get all members of the 'agents' group
+echo "agent-manager: Querying 'agents' group membership..."
 AGENTS_MEMBERS=$(getent group agents | cut -d: -f4 | tr ',' ' ')
 
 if [[ -z "$AGENTS_MEMBERS" ]]; then
     echo "agent-manager: No agent users found in 'agents' group."
+    echo "agent-manager: Finished at $(date -Iseconds)"
     exit 0
 fi
+
+echo "agent-manager: Found agents: ${AGENTS_MEMBERS}"
 
 STARTED=0
 FAILED=0
@@ -48,3 +53,4 @@ for USERNAME in $AGENTS_MEMBERS; do
 done
 
 echo "agent-manager: Done. Started=$STARTED Failed=$FAILED"
+echo "agent-manager: Finished at $(date -Iseconds)"

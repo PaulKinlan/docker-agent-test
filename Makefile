@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status
+.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status
 
 help:
 	@echo "Container management:"
@@ -20,6 +20,8 @@ help:
 	@echo "  make list-personas                      - List available personas"
 	@echo "  make agent-logs NAME=foo                - Tail logs for an agent"
 	@echo "  make agent-shell NAME=foo               - Open a shell as an agent user"
+	@echo "  make mail TO=alice MSG=\"Hello\"           - Send mail to an agent (from root)"
+	@echo "  make mail TO=alice FROM=bob MSG=\"Hi\"     - Send mail as a specific user"
 	@echo ""
 	@echo "Snapshots (run on host, container not required):"
 	@echo "  make snapshot-init                      - Initialize the snapshot repository"
@@ -109,6 +111,15 @@ ifndef NAME
 	$(error NAME is required. Usage: make agent-shell NAME=myagent)
 endif
 	docker-compose exec --user $(NAME) agent-host /bin/bash
+
+mail: ## Send mail to an agent
+ifndef TO
+	$(error TO is required. Usage: make mail TO=alice MSG="Hello" [FROM=bob] [SUBJECT="Hi"])
+endif
+ifndef MSG
+	$(error MSG is required. Usage: make mail TO=alice MSG="Hello" [FROM=bob] [SUBJECT="Hi"])
+endif
+	docker-compose exec -T agent-host /usr/local/bin/send-mail.sh "$(TO)" $(if $(FROM),--from "$(FROM)") $(if $(SUBJECT),--subject "$(SUBJECT)") -- "$(MSG)"
 
 # --- API key management ---
 

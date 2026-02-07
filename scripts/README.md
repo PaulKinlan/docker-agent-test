@@ -35,6 +35,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
+| `send-mail.sh` | Send mail to an agent | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
 | `snapshot-agents.sh` | Snapshot agent state (host-only) | `snapshot-agents.sh <command> [args]` |
 | `run-agent.sh` | Agent entrypoint (run by systemd) | Automatic — not run manually |
 | `agent-manager.sh` | Boot-time service reconciliation | Automatic — runs at container start |
@@ -174,6 +175,50 @@ USER                 SERVICE      ACTIVE     HOME
 ----                 -------      ------     ----
 alice                agent@alice.service active     /home/alice (yes)
 bob                  agent@bob.service   inactive   /home/bob (yes)
+```
+
+---
+
+## send-mail.sh
+
+Sends a local mail message to an agent user. By default, mail is sent from root. Use `--from` to send as a specific user — the command runs as that user.
+
+**Usage:**
+```bash
+# Inside the container
+send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>
+
+# From the host via Make
+make mail TO=<recipient> MSG="<message>" [FROM=<user>] [SUBJECT="<text>"]
+```
+
+**Arguments:**
+- `<recipient>` (required) — The agent user to send mail to. Must be an existing user.
+- `--from <user>` (optional) — Send mail as this user instead of root. The command logs in as the specified user to send the mail.
+- `--subject <text>` (optional) — Set the mail subject line. Defaults to "Message".
+- `-- <message>` (required) — The message body. Use `--` to separate the message from options, or pass it as the last argument.
+
+**What it does:**
+1. Validates the recipient user exists
+2. Validates the sender user exists (if `--from` is specified)
+3. Sends the message using the local mail system (s-nail via opensmtpd)
+4. If `--from` is specified, runs the mail command as that user via `runuser`
+5. If no `--from`, sends as root
+
+**Examples:**
+```bash
+# Send mail to alice from root
+make mail TO=alice MSG="Please check the build logs"
+
+# Send mail to alice from bob
+make mail TO=alice FROM=bob MSG="Hey, can you review my PR?"
+
+# Send mail with a custom subject
+make mail TO=alice FROM=bob SUBJECT="Code Review" MSG="PR #42 is ready for review"
+
+# Inside the container
+send-mail.sh alice -- "Hello from root"
+send-mail.sh alice --from bob --subject "Update" -- "Task complete"
 ```
 
 ---
@@ -375,6 +420,9 @@ make list-agents                                  # List all agents and status
 make list-personas                                # List available personas
 make agent-logs NAME=foo                          # Tail systemd journal logs
 make agent-shell NAME=foo                         # Open a shell as the agent user
+make mail TO=alice MSG="Hello"                    # Send mail to agent (from root)
+make mail TO=alice FROM=bob MSG="Hi"              # Send mail as a specific user
+make mail TO=alice FROM=bob SUBJECT="Re: Task" MSG="Done"  # With subject
 ```
 
 **API Key Management:**

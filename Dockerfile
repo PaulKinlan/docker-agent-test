@@ -83,7 +83,12 @@ RUN echo 'listen on localhost' > /etc/smtpd/smtpd.conf && \
 # systemd-networkd-wait-online blocks for ~2 minutes waiting for network
 # connectivity that Docker manages externally, preventing multi-user.target
 # (and therefore all agent services) from starting on time.
-RUN systemctl mask systemd-networkd-wait-online.service
+# systemd-firstboot runs Before=basic.target on every container start
+# (ConditionFirstBoot=yes) and hangs waiting for interactive input when a
+# TTY is attached, preventing basic.target from being reached and blocking
+# all agent services that depend on it.
+RUN systemctl mask systemd-networkd-wait-online.service && \
+    systemctl mask systemd-firstboot.service
 
 # Enable boot-time services
 RUN systemctl enable api-keys-sync.service && \

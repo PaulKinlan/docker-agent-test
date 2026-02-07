@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell set-api-key get-api-keys remove-api-key clear-api-keys list-providers
+.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status
 
 help:
 	@echo "Container management:"
@@ -20,6 +20,14 @@ help:
 	@echo "  make list-personas                      - List available personas"
 	@echo "  make agent-logs NAME=foo                - Tail logs for an agent"
 	@echo "  make agent-shell NAME=foo               - Open a shell as an agent user"
+	@echo ""
+	@echo "Snapshots (run on host, container not required):"
+	@echo "  make snapshot-init                      - Initialize the snapshot repository"
+	@echo "  make snapshot                           - Take a snapshot of agent state"
+	@echo "  make snapshot MSG=\"my note\"              - Take a snapshot with a custom message"
+	@echo "  make snapshot-log                       - Show snapshot history"
+	@echo "  make snapshot-diff                      - Show changes since last snapshot"
+	@echo "  make snapshot-status                    - Summarize changes since last snapshot"
 	@echo ""
 	@echo "API key management (container must be running):"
 	@echo "  make set-api-key NAME=foo KEY=ANTHROPIC_API_KEY=sk-xxx - Set API key for agent"
@@ -136,3 +144,20 @@ endif
 
 list-providers:
 	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh list-providers
+
+# --- Agent snapshots (host-side) ---
+
+snapshot-init:
+	@./scripts/snapshot-agents.sh init
+
+snapshot:
+	@./scripts/snapshot-agents.sh create "$(if $(MSG),$(MSG),)"
+
+snapshot-log:
+	@./scripts/snapshot-agents.sh log
+
+snapshot-diff:
+	@./scripts/snapshot-agents.sh diff
+
+snapshot-status:
+	@./scripts/snapshot-agents.sh status

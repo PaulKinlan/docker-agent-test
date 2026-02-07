@@ -50,6 +50,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── remove-agent.sh    # Remove an agent user
     ├── list-agents.sh     # List agents and their status
     ├── manage-api-keys.sh # Manage per-agent API keys
+    ├── snapshot-agents.sh # Snapshot agent state (host-only)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
     └── sync-api-keys.sh   # Boot-time API key environment sync
@@ -256,6 +257,35 @@ journalctl --directory=./log/journal
 # View smtpd (mail) activity
 journalctl --directory=./log/journal -u smtpd.service
 ```
+
+### Snapshotting Agent State
+
+You can version-control agent output (home directories, logs, mail) independently from the project source code. The snapshot system uses a separate git repository (`.agent-snapshots/`) with its own `GIT_DIR`, so it never conflicts with the main repo. The snapshot directory is not mounted into the container, so agents cannot see or tamper with it.
+
+**Setup:**
+```bash
+make snapshot-init
+```
+
+**Taking snapshots:**
+```bash
+make snapshot                           # Snapshot with timestamp message
+make snapshot MSG="alice finished task"  # Snapshot with custom message
+```
+
+**Reviewing history:**
+```bash
+make snapshot-status    # What changed since last snapshot
+make snapshot-diff      # Full diff since last snapshot
+make snapshot-log       # Snapshot history
+```
+
+**What gets tracked:**
+- `home/` — Agent home directories (work output, per-agent logs, config)
+- `log/` — System logs (text logs only; binary journal files are excluded)
+- `mail/` — Inter-agent mail spool
+
+See [`scripts/README.md`](scripts/README.md) for full documentation of `snapshot-agents.sh`.
 
 ## Notes
 

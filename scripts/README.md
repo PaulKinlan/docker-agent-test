@@ -35,6 +35,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
+| `snapshot-agents.sh` | Snapshot agent state (host-only) | `snapshot-agents.sh <command> [args]` |
 | `run-agent.sh` | Agent entrypoint (run by systemd) | Automatic — not run manually |
 | `agent-manager.sh` | Boot-time service reconciliation | Automatic — runs at container start |
 | `sync-api-keys.sh` | Sync env vars to global API keys | Automatic — runs at container start |
@@ -173,6 +174,72 @@ USER                 SERVICE      ACTIVE     HOME
 ----                 -------      ------     ----
 alice                agent@alice.service active     /home/alice (yes)
 bob                  agent@bob.service   inactive   /home/bob (yes)
+```
+
+---
+
+## snapshot-agents.sh
+
+Snapshots agent runtime state (home directories, logs, mail) using a separate git repository. This script runs **on the host only** — it refuses to run inside the container.
+
+The snapshot repo uses a separate `GIT_DIR` (`.agent-snapshots/`) that is completely independent from the main source repo. It is not mounted into the container, so agents never see it.
+
+**Usage:**
+```bash
+# From the host
+./scripts/snapshot-agents.sh <command> [args]
+
+# Via Make
+make snapshot-init
+make snapshot
+make snapshot MSG="after task 3"
+make snapshot-log
+make snapshot-diff
+make snapshot-status
+```
+
+**Commands:**
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `init` | Initialize the snapshot repository | `snapshot-agents.sh init` |
+| `create` | Take a snapshot (default message: timestamp) | `snapshot-agents.sh create "checkpoint"` |
+| `log` | Show snapshot history | `snapshot-agents.sh log -5` |
+| `diff` | Show changes since last snapshot | `snapshot-agents.sh diff HEAD~1` |
+| `show` | Show a specific snapshot | `snapshot-agents.sh show HEAD` |
+| `status` | Summarize what changed since last snapshot | `snapshot-agents.sh status` |
+| `help` | Show usage information | `snapshot-agents.sh help` |
+
+**What it tracks:**
+- `home/` — Agent home directories (work output, logs, config)
+- `log/` — System logs (excluding binary journal files)
+- `mail/` — Inter-agent mail spool
+
+**What it excludes:**
+- All source code and config (managed by the main repo)
+- `.gitkeep` files (belong to the main repo)
+- `log/journal/` (binary systemd journal — not useful in git)
+
+**How it works:**
+
+The snapshot repo is a bare git repository at `.agent-snapshots/`. All git operations use explicit `--git-dir` and `--work-tree` flags to keep it separate from the main repo's `.git`. The `.agent-snapshots` directory is listed in the main repo's `.gitignore`.
+
+**Examples:**
+```bash
+# First-time setup
+./scripts/snapshot-agents.sh init
+
+# Take snapshots as agents work
+make snapshot MSG="alice finished onboarding"
+make snapshot MSG="bob completed code review"
+
+# Review what changed
+make snapshot-status
+make snapshot-diff
+
+# Browse history
+make snapshot-log
+./scripts/snapshot-agents.sh show HEAD~2 --stat
 ```
 
 ---
@@ -317,4 +384,14 @@ make get-api-keys NAME=foo                              # Show API keys (masked)
 make remove-api-key NAME=foo KEY=OPENAI_API_KEY         # Remove specific key
 make clear-api-keys NAME=foo                            # Remove all keys
 make list-providers                                     # List known provider names
+```
+
+**Snapshots (host-side, container not required):**
+```bash
+make snapshot-init                      # Initialize the snapshot repo
+make snapshot                           # Take a snapshot of agent state
+make snapshot MSG="after task 3"        # Take a snapshot with a custom message
+make snapshot-log                       # Show snapshot history
+make snapshot-diff                      # Show changes since last snapshot
+make snapshot-status                    # Summarize changes since last snapshot
 ```

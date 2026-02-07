@@ -32,10 +32,10 @@ for USERNAME in $AGENTS_MEMBERS; do
         continue
     fi
 
-    # Enable and start (idempotent)
-    systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
+    # Enable and start (idempotent, with timeout to avoid D-Bus hangs)
+    timeout 10 systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
 
-    if systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
+    if timeout 10 systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
         echo "  [OK]   $USERNAME — agent starting"
         ((STARTED++))
     else

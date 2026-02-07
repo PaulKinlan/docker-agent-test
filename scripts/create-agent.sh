@@ -198,8 +198,12 @@ if [[ ${#API_KEYS[@]} -gt 0 ]]; then
 fi
 
 # 5. Enable and start the agent service for this user
+# Use timeout on systemctl calls to prevent hanging if systemd D-Bus is slow inside Docker
 systemctl enable "agent@${USERNAME}.service"
-systemctl start --no-block "agent@${USERNAME}.service"
-echo "  -> agent@${USERNAME}.service enabled and starting"
+if timeout 10 systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
+    echo "  -> agent@${USERNAME}.service enabled and starting"
+else
+    echo "  -> agent@${USERNAME}.service enabled (start queued — may take a moment)"
+fi
 
 echo "Agent '$USERNAME' is ready."

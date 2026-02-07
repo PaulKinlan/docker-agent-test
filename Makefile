@@ -63,7 +63,7 @@ create-agent:
 ifndef NAME
 	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder] [API_KEY=PROVIDER=key])
 endif
-	docker-compose exec agent-host /usr/local/bin/create-agent.sh $(NAME) \
+	docker-compose exec -T agent-host /usr/local/bin/create-agent.sh $(NAME) \
 		$(if $(PERSONA),--persona $(PERSONA)) \
 		$(if $(API_KEY),--api-key $(API_KEY))
 
@@ -71,7 +71,7 @@ remove-agent:
 ifndef NAME
 	$(error NAME is required. Usage: make remove-agent NAME=myagent)
 endif
-	docker-compose exec agent-host /usr/local/bin/remove-agent.sh $(NAME)
+	docker-compose exec -T agent-host /usr/local/bin/remove-agent.sh $(NAME)
 
 update-agent:
 ifndef NAME
@@ -80,10 +80,10 @@ endif
 ifndef PERSONA
 	$(error PERSONA is required. Usage: make update-agent NAME=myagent PERSONA=coder)
 endif
-	docker-compose exec agent-host /usr/local/bin/update-agent.sh $(NAME) --persona $(PERSONA)
+	docker-compose exec -T agent-host /usr/local/bin/update-agent.sh $(NAME) --persona $(PERSONA)
 
 list-agents:
-	docker-compose exec agent-host /usr/local/bin/list-agents.sh
+	docker-compose exec -T agent-host /usr/local/bin/list-agents.sh
 
 list-personas:
 	@echo "Available personas (in config/personas/):"
@@ -102,7 +102,7 @@ agent-logs:
 ifndef NAME
 	$(error NAME is required. Usage: make agent-logs NAME=myagent)
 endif
-	docker-compose exec agent-host journalctl -u agent@$(NAME).service -f
+	docker-compose exec -T agent-host journalctl -u agent@$(NAME).service -f
 
 agent-shell:
 ifndef NAME
@@ -119,13 +119,13 @@ endif
 ifndef KEY
 	$(error KEY is required. Usage: make set-api-key NAME=myagent KEY=ANTHROPIC_API_KEY=sk-xxx)
 endif
-	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh set $(NAME) $(KEY)
+	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh set $(NAME) $(KEY)
 
 get-api-keys:
 ifndef NAME
 	$(error NAME is required. Usage: make get-api-keys NAME=myagent)
 endif
-	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh get $(NAME)
+	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh get $(NAME)
 
 remove-api-key:
 ifndef NAME
@@ -134,16 +134,16 @@ endif
 ifndef KEY
 	$(error KEY is required. Usage: make remove-api-key NAME=myagent KEY=OPENAI_API_KEY)
 endif
-	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh remove $(NAME) $(KEY)
+	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh remove $(NAME) $(KEY)
 
 clear-api-keys:
 ifndef NAME
 	$(error NAME is required. Usage: make clear-api-keys NAME=myagent)
 endif
-	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh clear $(NAME)
+	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh clear $(NAME)
 
 list-providers:
-	docker-compose exec agent-host /usr/local/bin/manage-api-keys.sh list-providers
+	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh list-providers
 
 # --- Agent snapshots (host-side) ---
 

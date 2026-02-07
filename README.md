@@ -317,7 +317,7 @@ See [`scripts/README.md`](scripts/README.md) for full documentation of `snapshot
 
 ## Notes
 
-- Agent users run with restricted permissions: no sudo, read-only `/usr` and `/boot`, private `/tmp`, no capabilities, and no privilege escalation. Kernel-level protections (ProtectKernelTunables, ProtectControlGroups, etc.) are disabled by default for Docker compatibility but can be re-enabled in `config/systemd/agent@.service` for non-Docker deployments. Unix permissions prevent agents from writing outside their own home. Only root can install packages or modify the system.
+- Agent users run as unprivileged users in the `agents` group with no sudo access. Unix permissions prevent agents from writing outside their own home directory (mode 700). Only root can install packages or modify the system. Systemd security hardening directives (NoNewPrivileges, ProtectSystem, PrivateTmp, CapabilityBoundingSet, RestrictAddressFamilies, resource limits, etc.) are commented out by default because they cause silent service failures inside Docker containers (cgroup delegation, overlay2 mount conflicts, seccomp layering). The Docker container boundary provides equivalent isolation. To re-enable for non-Docker deployments, uncomment them in `config/systemd/agent@.service`.
 - The home directory is persisted outside the container in the repository
 - Configuration files can be edited in the repository and will be applied when the image is rebuilt
 - Systemd is available but requires privileged mode (enabled in docker-compose.yml)

@@ -13,6 +13,9 @@ log/journal/*
 mail/*
 !mail/.gitkeep
 
+# Agent snapshot repository (separate GIT_DIR, not part of this repo)
+.agent-snapshots
+
 # Logs
 *.log
 

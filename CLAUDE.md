@@ -35,6 +35,7 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
     ├── remove-agent.sh         # Remove agent user
     ├── list-agents.sh          # List agents and status
     ├── manage-api-keys.sh      # Manage per-agent API keys
+    ├── snapshot-agents.sh      # Snapshot agent state (host-only)
     ├── run-agent.sh            # Agent entrypoint (called by systemd)
     ├── agent-manager.sh        # Boot-time service reconciliation
     └── sync-api-keys.sh        # Boot-time API key environment sync

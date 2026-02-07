@@ -29,3 +29,6 @@ mail/*
 # IDE
 .vscode
 .idea
+
+# TUI dependencies
+tui/node_modules

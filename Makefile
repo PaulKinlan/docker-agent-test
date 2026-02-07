@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status
+.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
 
 help:
 	@echo "Container management:"
@@ -30,6 +30,10 @@ help:
 	@echo "  make snapshot-log                       - Show snapshot history"
 	@echo "  make snapshot-diff                      - Show changes since last snapshot"
 	@echo "  make snapshot-status                    - Summarize changes since last snapshot"
+	@echo ""
+	@echo "Interactive TUI:"
+	@echo "  make install-tui                        - Install TUI dependencies (first time)"
+	@echo "  make tui                                - Open the interactive TUI"
 	@echo ""
 	@echo "API key management (container must be running):"
 	@echo "  make set-api-key NAME=foo KEY=ANTHROPIC_API_KEY=sk-xxx - Set API key for agent"
@@ -172,3 +176,11 @@ snapshot-diff:
 
 snapshot-status:
 	@./scripts/snapshot-agents.sh status
+
+# --- Interactive TUI ---
+
+install-tui: ## Install TUI dependencies
+	@cd tui && npm install
+
+tui: ## Open the interactive TUI
+	@node cli.mjs

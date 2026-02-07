@@ -46,6 +46,13 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │       ├── agent@.service          # Per-agent service template
 │       ├── agent-manager.service   # Boot-time reconciliation service
 │       └── api-keys-sync.service   # Boot-time API key sync service
+├── tui/                   # Interactive TUI (Node.js + Ink, host-side only)
+│   ├── package.json       # Dependencies (ink, react)
+│   ├── cli.mjs            # Entry point
+│   ├── app.mjs            # Root component
+│   ├── components/        # UI components (Prompt, Output, StatusBar, Banner)
+│   └── lib/               # Logic (commands, executor, container, completions)
+├── cli.mjs                # Root-level TUI wrapper (runs tui/cli.mjs)
 └── scripts/               # Management scripts (copied to /usr/local/bin)
     ├── create-agent.sh    # Create a new agent user
     ├── update-agent.sh    # Update an agent's persona
@@ -196,6 +203,39 @@ Run `make list-providers` to see all supported provider names.
 Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`). All output is logged to both the systemd journal and `/home/<username>/.agent.log`.
 
 At container boot, `agent-manager.sh` automatically reconciles all users in the `agents` group, ensuring their services are enabled and started.
+
+### Interactive TUI
+
+An interactive command prompt (like Claude Code) for managing the system. Built with Node.js and Ink.
+
+**Setup:**
+```bash
+make install-tui   # Install dependencies (first time only)
+```
+
+**Run:**
+```bash
+make tui           # or: node cli.mjs
+```
+
+**Available commands inside the TUI:**
+
+| Command | Description |
+|---------|-------------|
+| `build` | Build the Docker image |
+| `up` / `down` / `restart` | Container lifecycle |
+| `status` | Show container status |
+| `list` | List agents and their status |
+| `create alice --persona coder` | Create a new agent |
+| `remove alice` | Remove an agent |
+| `logs alice` | Stream agent logs (Ctrl+C to stop) |
+| `mail alice "Hello"` | Send mail to an agent |
+| `read-mail alice` | Read an agent's mailbox |
+| `set-key alice ANTHROPIC_API_KEY=sk-xxx` | Set API key |
+| `snapshot "my note"` | Take a state snapshot |
+| `help` | Show all commands |
+
+Tab completion is available for commands, agent names, and persona names. Use up/down arrows to navigate command history.
 
 ### Customizing Configuration
 

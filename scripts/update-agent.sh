@@ -149,8 +149,8 @@ echo "  -> config.json updated"
 
 # 3. Restart the agent service to pick up the new persona
 if systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
-    systemctl restart "agent@${USERNAME}.service"
-    echo "  -> agent@${USERNAME}.service restarted"
+    systemctl restart --no-block "agent@${USERNAME}.service"
+    echo "  -> agent@${USERNAME}.service restarting"
 else
     echo "  -> Warning: agent@${USERNAME}.service is not enabled (skipped restart)"
 fi

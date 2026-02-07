@@ -35,11 +35,11 @@ for USERNAME in $AGENTS_MEMBERS; do
     # Enable and start (idempotent)
     systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
 
-    if systemctl start "agent@${USERNAME}.service" 2>/dev/null; then
-        echo "  [OK]   $USERNAME — agent started"
+    if systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
+        echo "  [OK]   $USERNAME — agent starting"
         ((STARTED++))
     else
-        echo "  [FAIL] $USERNAME — agent failed to start"
+        echo "  [FAIL] $USERNAME — agent failed to queue start"
         ((FAILED++))
     fi
 done

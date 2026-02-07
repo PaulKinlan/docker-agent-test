@@ -7,15 +7,20 @@
 
 set -euo pipefail
 
+echo "agent-manager: Starting at $(date -Iseconds)"
 echo "agent-manager: Reconciling agent services..."
 
 # Get all members of the 'agents' group
+echo "agent-manager: Querying 'agents' group membership..."
 AGENTS_MEMBERS=$(getent group agents | cut -d: -f4 | tr ',' ' ')
 
 if [[ -z "$AGENTS_MEMBERS" ]]; then
     echo "agent-manager: No agent users found in 'agents' group."
+    echo "agent-manager: Finished at $(date -Iseconds)"
     exit 0
 fi
+
+echo "agent-manager: Found agents: ${AGENTS_MEMBERS}"
 
 STARTED=0
 FAILED=0
@@ -33,9 +38,12 @@ for USERNAME in $AGENTS_MEMBERS; do
     fi
 
     # Enable and start (idempotent, with timeout to avoid D-Bus hangs)
-    timeout 10 systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
+    # --kill-after sends SIGKILL if SIGTERM doesn't work (e.g., stuck D-Bus call)
+    echo "  Enabling agent@${USERNAME}.service..."
+    timeout --kill-after=5 10 systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
 
-    if timeout 10 systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
+    echo "  Starting agent@${USERNAME}.service..."
+    if timeout --kill-after=5 10 systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
         echo "  [OK]   $USERNAME — agent starting"
         ((STARTED++))
     else
@@ -45,3 +53,4 @@ for USERNAME in $AGENTS_MEMBERS; do
 done
 
 echo "agent-manager: Done. Started=$STARTED Failed=$FAILED"
+echo "agent-manager: Finished at $(date -Iseconds)"

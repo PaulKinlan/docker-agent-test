@@ -53,7 +53,7 @@ shell:
 	docker-compose exec agent-host /bin/bash
 
 logs:
-	docker-compose logs -f
+	docker-compose logs -f --timestamps
 
 clean: down
 	docker rmi agent-host:latest || true

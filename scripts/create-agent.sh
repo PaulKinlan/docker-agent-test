@@ -199,7 +199,7 @@ fi
 
 # 5. Enable and start the agent service for this user
 systemctl enable "agent@${USERNAME}.service"
-systemctl start "agent@${USERNAME}.service"
-echo "  -> agent@${USERNAME}.service enabled and started"
+systemctl start --no-block "agent@${USERNAME}.service"
+echo "  -> agent@${USERNAME}.service enabled and starting"
 
 echo "Agent '$USERNAME' is ready."

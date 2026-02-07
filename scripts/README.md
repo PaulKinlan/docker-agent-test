@@ -67,7 +67,7 @@ make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
 4. Builds `agents.md` from base persona + optional specialist persona
 5. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
 6. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
-7. Enables and starts the `agent@<username>.service` systemd unit
+7. Enables the `agent@<username>.service` systemd unit and queues it to start (non-blocking)
 
 **Examples:**
 ```bash
@@ -108,7 +108,7 @@ make update-agent NAME=<username> PERSONA=<name>
 2. Validates the requested persona exists in `/etc/agent-personas/`
 3. Rebuilds `agents.md` from the base persona + the new specialist persona
 4. Updates `.claude/config.json` with the new persona name
-5. Restarts `agent@<username>.service` to pick up the changes
+5. Restarts `agent@<username>.service` to pick up the changes (non-blocking)
 
 **Examples:**
 ```bash
@@ -286,7 +286,7 @@ This script is **not intended to be run manually**.
 **What it does:**
 1. Enumerates all users in the `agents` group
 2. For each user, verifies the account and home directory still exist
-3. Enables and starts the corresponding `agent@<username>.service`
+3. Enables and queues start for the corresponding `agent@<username>.service` (non-blocking)
 4. Reports a summary of started vs. failed agents
 
 ---

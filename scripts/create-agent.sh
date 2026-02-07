@@ -159,13 +159,15 @@ else
     echo "  -> Persona: base (default)"
 fi
 
-# 3. Create .claude/ directory owned by root, readable by the user
+# 3. Create .claude/ directory owned by the agent user
+# The SDK needs to create subdirectories at runtime (sessions, projects, todos, etc.)
+# so the directory must be agent-writable. The config.json is root-owned read-only.
 CLAUDE_DIR="/home/$USERNAME/.claude"
 mkdir -p "$CLAUDE_DIR"
-chown root:root "$CLAUDE_DIR"
+chown "$USERNAME:$USERNAME" "$CLAUDE_DIR"
 chmod 755 "$CLAUDE_DIR"
 
-# Seed config with agent metadata including persona info
+# Seed config with agent metadata including persona info (root-owned, read-only to agent)
 cat > "$CLAUDE_DIR/config.json" <<CONF
 {
   "agent": {
@@ -176,7 +178,7 @@ cat > "$CLAUDE_DIR/config.json" <<CONF
 CONF
 chown root:root "$CLAUDE_DIR/config.json"
 chmod 644 "$CLAUDE_DIR/config.json"
-echo "  -> .claude/ directory created (root-owned, user-readable)"
+echo "  -> .claude/ directory created (agent-writable, config.json root-owned)"
 
 # 4. Configure per-agent API keys if provided
 if [[ ${#API_KEYS[@]} -gt 0 ]]; then

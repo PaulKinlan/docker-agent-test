@@ -8,5 +8,14 @@ Type=oneshot
 ExecStart=/usr/local/bin/sync-api-keys.sh
 RemainAfterExit=yes
 
+# Pass API key env vars from PID 1 (Docker) into the service environment
+PassEnvironment=ANTHROPIC_API_KEY OPENAI_API_KEY GOOGLE_API_KEY GEMINI_API_KEY
+PassEnvironment=MISTRAL_API_KEY COHERE_API_KEY GROQ_API_KEY TOGETHER_API_KEY
+PassEnvironment=FIREWORKS_API_KEY PERPLEXITY_API_KEY REPLICATE_API_TOKEN
+PassEnvironment=HUGGINGFACE_API_KEY HF_TOKEN
+PassEnvironment=AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
+PassEnvironment=AZURE_OPENAI_API_KEY AZURE_OPENAI_ENDPOINT
+PassEnvironment=AGENT_CYCLE_INTERVAL AGENT_MODEL AGENT_MAX_TURNS
+
 [Install]
 WantedBy=multi-user.target

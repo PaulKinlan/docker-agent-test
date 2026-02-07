@@ -55,6 +55,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── manage-api-keys.sh # Manage per-agent API keys
     ├── send-mail.sh       # Send mail to an agent user
     ├── snapshot-agents.sh # Snapshot agent state (host-only)
+    ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
     └── sync-api-keys.sh   # Boot-time API key environment sync
@@ -193,7 +194,7 @@ Run `make list-providers` to see all supported provider names.
 
 #### How Agents Run
 
-Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. By default, the script logs heartbeats to `/home/<username>/.agent.log`. Replace the heartbeat loop in `run-agent.sh` with your actual agent binary to deploy real workloads.
+Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`). All output is logged to both the systemd journal and `/home/<username>/.agent.log`.
 
 At container boot, `agent-manager.sh` automatically reconciles all users in the `agents` group, ensuring their services are enabled and started.
 

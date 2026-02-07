@@ -37,6 +37,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
 | `send-mail.sh` | Send mail to an agent | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
 | `snapshot-agents.sh` | Snapshot agent state (host-only) | `snapshot-agents.sh <command> [args]` |
+| `agent-loop.mjs` | Single agentic work cycle (Agent SDK) | Automatic — called by `run-agent.sh` |
 | `run-agent.sh` | Agent entrypoint (run by systemd) | Automatic — not run manually |
 | `agent-manager.sh` | Boot-time service reconciliation | Automatic — runs at container start |
 | `sync-api-keys.sh` | Sync env vars to global API keys | Automatic — runs at container start |
@@ -290,6 +291,30 @@ make snapshot-log
 
 ---
 
+## agent-loop.mjs
+
+A Node.js script that performs a single agentic work cycle using the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`). It is called by `run-agent.sh` on each cycle and is **not intended to be run manually**.
+
+**What it does:**
+1. Sends a prompt to Claude instructing it to follow the agent's `CLAUDE.md` operating instructions
+2. Claude checks for new mail, reads `TODO.md`, works on tasks, updates `MEMORY.md`, and reports back
+3. The SDK handles tool execution automatically (Bash, Read, Write, Edit, Glob, Grep)
+4. Logs assistant output snippets and cycle results to stdout (captured by journald)
+5. Exits with code 0 on success, 1 on failure
+
+**Environment variables:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | (required) | API key for Claude |
+| `AGENT_USER` | `$USER` | Agent username (set by `run-agent.sh`) |
+| `AGENT_MODEL` | `claude-opus-4-6` | Claude model to use |
+| `AGENT_MAX_TURNS` | `50` | Maximum conversation turns per cycle |
+| `AGENT_CYCLE_TIMEOUT_MS` | `300000` | Cycle timeout in milliseconds (5 min) |
+
+**Security:** Runs with `permissionMode: "bypassPermissions"` since there is no human to approve tool use. Agents are sandboxed by Unix permissions (no sudo, home-directory-only writes).
+
+---
+
 ## run-agent.sh
 
 The entrypoint script executed by each agent's systemd service (`agent@<username>.service`). It runs as the agent user with their home directory as the working directory.
@@ -300,7 +325,7 @@ This script is **not intended to be run manually** — it is invoked automatical
 1. Logs startup information (user, home directory, PID, config file status)
 2. Checks for `agents.md` and `.claude/config.json` in the user's home
 3. Loads API keys from global and per-agent configuration (see API Key Loading below)
-4. Runs a heartbeat loop, logging "alive" every 60 seconds to `/home/<username>/.agent.log`
+4. Runs an autonomous work cycle loop: invokes `agent-loop.mjs` on each iteration, then sleeps
 
 **API Key Loading:**
 1. First loads global defaults from `/etc/agent-api-keys/global.env` (if exists)
@@ -308,11 +333,10 @@ This script is **not intended to be run manually** — it is invoked automatical
 3. Per-agent keys take precedence over global keys
 4. All loaded keys are exported as environment variables
 
-**Customization:** The heartbeat loop is a placeholder. Replace it with your actual agent binary:
-```bash
-# In run-agent.sh, replace the while loop with:
-exec claude-code --config "$CLAUDE_CONFIG"
-```
+**Cycle loop configuration:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_CYCLE_INTERVAL` | `300` | Seconds to sleep between work cycles |
 
 **Logs:** Output goes to both the systemd journal and `/home/<username>/.agent.log`. View logs with:
 ```bash

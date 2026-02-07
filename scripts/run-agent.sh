@@ -9,8 +9,8 @@
 #   2. Per-agent overrides from ~/.claude/api-keys.env (if exists)
 #   Per-agent keys take precedence over global keys.
 #
-# Currently a placeholder that logs heartbeats. Replace the main loop
-# with your actual agent binary (e.g., claude-code, or another system).
+# Runs autonomous work cycles using the Claude Agent SDK via agent-loop.mjs.
+# Each cycle checks mail, processes TODOs, and reports results.
 
 set -euo pipefail
 
@@ -89,15 +89,24 @@ else
 fi
 
 # ──────────────────────────────────────────────
-# TODO: Replace this loop with your agent binary
-# e.g.:  exec claude-code --config "$CLAUDE_CONFIG"
+# Agent SDK loop — runs autonomous work cycles
 # ──────────────────────────────────────────────
 
-HEARTBEAT_INTERVAL=60  # seconds
+# Cycle interval: time to sleep between work cycles (seconds)
+readonly CYCLE_INTERVAL="${AGENT_CYCLE_INTERVAL:-300}"
 
-log "Agent running (heartbeat every ${HEARTBEAT_INTERVAL}s)"
+# Export variables needed by the Node.js agent-loop script
+export AGENT_USER
+export NODE_PATH="/usr/lib/node_modules"
+
+log "Agent running (cycle every ${CYCLE_INTERVAL}s)"
 
 while true; do
-    sleep "$HEARTBEAT_INTERVAL"
-    log "Heartbeat — alive"
+    log "Starting work cycle"
+    if node /usr/local/bin/agent-loop.mjs 2>&1 | tee -a "$AGENT_LOG"; then
+        log "Work cycle completed successfully"
+    else
+        log "Work cycle failed (exit $?), will retry next cycle"
+    fi
+    sleep "$CYCLE_INTERVAL"
 done

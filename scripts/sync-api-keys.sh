@@ -85,7 +85,7 @@ echo "sync-api-keys: Writing keys to ${GLOBAL_ENV}..."
 
 # Secure permissions
 echo "sync-api-keys: Setting permissions on ${GLOBAL_ENV}..."
-chmod 600 "$GLOBAL_ENV"
+chmod 644 "$GLOBAL_ENV"
 chown root:root "$GLOBAL_ENV"
 
 # Count how many keys were written

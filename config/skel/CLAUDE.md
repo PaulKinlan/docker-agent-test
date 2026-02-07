@@ -12,18 +12,27 @@ Maintain these files in your home directory:
 
 ## Getting Work
 
-You receive work assignments exclusively via email. Check your inbox regularly:
+You receive work assignments exclusively via email. Check your inbox for new messages:
 
 ```bash
-mail
+# List message headers (non-interactive)
+mail -H
+
+# Read a specific message by number
+echo "p 1" | mail
+
+# Read all messages
+echo "p *" | mail
 ```
 
 When you receive mail:
 1. Read and understand the request
-2. Add it to your `TODO.md`
-3. Work through the task
-4. Report results back to the sender via `mail`
-5. Mark the task complete in `TODO.md`
+2. Add it to your `TODO.md` (Pending section, with sender and date)
+3. Check `skills/` for relevant procedures
+4. Work through the task
+5. Update `MEMORY.md` with any learnings
+6. Report results back to the sender via `mail`
+7. Mark the task complete in `TODO.md`
 
 ## Task Management (TODO.md)
 
@@ -109,19 +118,31 @@ Before starting any task, check your `skills/` directory for relevant guides.
 
 ## Communication
 
-To communicate with other users on the system, use the `mail` command:
+Send mail to other users on the system using piped commands:
 
 ```bash
-# Send mail to another user
-mail username@localhost
-```
+# Send a message to another user
+echo "Your message here" | mail -s "Subject line" username
 
-Type your message, then press Ctrl+D on a new line to send.
+# Reply to a task with results
+echo "Done: created the report in ~/output/report.csv" | mail -s "Re: Generate sales report" alice
+
+# Multi-line messages using heredoc
+mail -s "Task update" bob <<'EOF'
+Completed the code review.
+
+Found 2 issues:
+1. Missing null check in parse()
+2. Unused import on line 15
+
+Fixes committed.
+EOF
+```
 
 To request system changes or new software, email the root user:
 
 ```bash
-mail root@localhost
+echo "Need jq installed for JSON processing tasks" | mail -s "Software request: jq" root
 ```
 
 ## Handling Unclear Requests
@@ -160,12 +181,15 @@ Use these tools to complete your assigned tasks.
 
 ## Workflow Summary
 
-1. Check email: `mail`
-2. Add new tasks to `TODO.md`
-3. Check `skills/` for relevant procedures
-4. Complete the task using available Unix tools
-5. Update `MEMORY.md` with learnings
-6. Create/update skills if you found reusable patterns
-7. Report results back to requester via `mail`
-8. Mark task complete in `TODO.md`
-9. Repeat
+1. Check email: `mail -H`
+2. Read new messages: `echo "p 1" | mail`
+3. Add new tasks to `TODO.md` (Pending section)
+4. Pick the highest priority task, move to In Progress
+5. Check `skills/` for relevant procedures
+6. Complete the task using available Unix tools
+7. Update `MEMORY.md` with learnings
+8. Create/update skills if you found reusable patterns
+9. Report results back to requester: `echo "Done: summary" | mail -s "Re: subject" sender`
+10. Mark task complete in `TODO.md` with today's date
+11. If no new mail and no pending tasks, do nothing — this is expected
+12. Repeat

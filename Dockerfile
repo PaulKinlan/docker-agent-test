@@ -31,8 +31,9 @@ RUN mkdir -p /etc/sudoers.d && \
     echo '%agents ALL=(ALL) !ALL' > /etc/sudoers.d/deny-agents && \
     chmod 440 /etc/sudoers.d/deny-agents
 
-# Install Claude Code globally (uses system node)
-RUN npm install -g @anthropic-ai/claude-code
+# Install Claude Code and Agent SDK globally (uses system node)
+RUN npm install -g @anthropic-ai/claude-code @anthropic-ai/claude-agent-sdk && \
+    ln -s /usr/lib/node_modules /usr/local/bin/node_modules
 
 # Install nvm system-wide so agents can manage their own Node versions
 # System node (pacman) is kept for root/Claude Code; nvm is for agent dev work
@@ -60,14 +61,14 @@ COPY config/api-keys/ /etc/agent-api-keys/
 RUN if [ -f /etc/agent-api-keys/global.env ]; then \
         mv /etc/agent-api-keys/global.env /etc/agent-api-keys/global.env.static; \
     fi && \
-    chmod 700 /etc/agent-api-keys
+    chmod 755 /etc/agent-api-keys
 
 # Copy systemd system-level service units
 COPY config/systemd/ /etc/systemd/system/
 
 # Copy management scripts
 COPY scripts/ /usr/local/bin/
-RUN chmod +x /usr/local/bin/*.sh
+RUN chmod +x /usr/local/bin/*.sh /usr/local/bin/*.mjs
 
 # Configure journald for persistent storage so logs survive in /var/log/journal
 # (mounted to host via docker-compose for external observation)
@@ -75,9 +76,14 @@ RUN mkdir -p /etc/systemd/journald.conf.d && \
     printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/persistent.conf
 
 # Configure opensmtpd for local-only mail delivery
-RUN echo 'listen on localhost' > /etc/smtpd/smtpd.conf && \
-    echo 'action "local" mbox alias <aliases>' >> /etc/smtpd/smtpd.conf && \
-    echo 'match from local for local action "local"' >> /etc/smtpd/smtpd.conf
+RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on localhost\naction "local" mbox alias <aliases>\nmatch from local for local action "local"\n' > /etc/smtpd/smtpd.conf && \
+    mkdir -p /var/spool/smtpd/{offline,purge,temporary,incoming,queue,corrupt} && \
+    chmod 711 /var/spool/smtpd && \
+    chmod 700 /var/spool/smtpd/{purge,temporary,incoming,queue,corrupt} && \
+    chmod 770 /var/spool/smtpd/offline && \
+    chown smtpq:root /var/spool/smtpd/{purge,temporary,incoming,queue,corrupt} && \
+    chown root:smtpq /var/spool/smtpd/offline && \
+    mkdir -p /var/spool/mail && chmod 1777 /var/spool/mail
 
 # Mask services that are unnecessary inside Docker and block the boot process.
 #

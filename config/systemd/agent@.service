@@ -1,6 +1,6 @@
 [Unit]
 Description=Agent for user %i
-After=multi-user.target
+After=basic.target
 
 [Service]
 Type=simple
@@ -28,11 +28,6 @@ ProtectSystem=full
 # Private /tmp so agents cannot see each other's temp files
 PrivateTmp=true
 
-# Prevent modification of kernel tunables, modules, and control groups
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-
 # Restrict the set of capabilities to empty (agent needs none)
 CapabilityBoundingSet=
 AmbientCapabilities=
@@ -43,11 +38,18 @@ RestrictSUIDSGID=true
 # Restrict address families to only what's needed (IPv4, IPv6, Unix sockets)
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
-# Prevent access to kernel log buffer
-ProtectKernelLogs=true
-
-# Prevent creating new namespaces
-RestrictNamespaces=true
+# ── Kernel-level protections (disabled for Docker compatibility) ──
+# These directives fail silently in Docker containers, especially on
+# older kernels (4.x), causing the service to stay inactive (dead)
+# with no journal output. The container boundary provides equivalent
+# kernel-level isolation, so these are redundant here.
+#
+# To re-enable outside Docker, uncomment the following:
+# ProtectKernelTunables=true
+# ProtectKernelModules=true
+# ProtectControlGroups=true
+# ProtectKernelLogs=true
+# RestrictNamespaces=true
 
 # Basic resource constraints (tune as needed)
 MemoryMax=512M

@@ -1,174 +1,191 @@
 # Quick Start Guide
 
-This guide will help you get started with the Arch Linux Docker environment.
+This guide covers day-to-day usage of the agent hosting system. All operations are driven through `make` targets.
 
 ## Prerequisites
 
-- Docker installed on your system
-- Docker Compose installed (optional, but recommended)
-- Network access to download Arch Linux packages
+- Docker and Docker Compose installed
+- Network access to download Arch Linux packages (for builds)
+- An Anthropic API key (or other supported provider key) for agents to use
 
-## Quick Start
+## Getting Started
 
-### 1. Build the Docker Image
-
-```bash
-docker-compose build
-```
-
-Or using Docker directly:
-```bash
-docker build -t arch-dev .
-```
-
-### 2. Start the Container
+### 1. Build and start
 
 ```bash
-docker-compose up -d
+make build
+make up
 ```
 
-Or using Docker directly:
-```bash
-docker run -it -v $(pwd)/home:/home/user arch-dev
-```
+This builds the Arch Linux-based image and boots the container with systemd as init.
 
-### 3. Access the Container
+### 2. Create an agent
 
 ```bash
-docker-compose exec arch-dev /bin/bash
+make create-agent NAME=alice
 ```
 
-You should see the custom welcome message from `/etc/profile.d/custom-env.sh`.
+This creates a Linux user `alice`, sets up their home directory from the skeleton template, and starts their systemd service.
 
-### 4. Verify the Setup
+To assign a specialist persona:
 
-Inside the container, verify that:
+```bash
+make create-agent NAME=bob PERSONA=coder
+```
 
-1. **Home directory is mounted:**
-   ```bash
-   pwd  # Should show /home/user
-   touch test-file.txt
-   ls -la test-file.txt
-   ```
-   
-   Exit the container and check that `test-file.txt` exists in `./home/` directory.
+Available personas: `base` (default, applied to all agents), `coder`, `researcher`, `reviewer`. List them with:
 
-2. **Custom environment variables are loaded:**
-   ```bash
-   echo $CUSTOM_VAR  # Should display: "This is a custom global variable"
-   ```
+```bash
+make list-personas
+```
 
-3. **Bash configuration is applied:**
-   ```bash
-   ll  # Custom alias from .bashrc should work
-   ```
+### 3. Provide an API key
 
-4. **Systemd user services are available:**
-   ```bash
-   systemctl --user status
-   ```
+Agents need API keys to function. You can set them globally via host environment variables before starting the container:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+make restart
+```
+
+Or set a key for a specific agent:
+
+```bash
+make set-api-key NAME=alice KEY=ANTHROPIC_API_KEY=sk-ant-...
+```
+
+You can also pass an API key at agent creation time:
+
+```bash
+make create-agent NAME=alice API_KEY=ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### 4. Check agent status
+
+```bash
+make list-agents
+```
+
+### 5. View agent logs
+
+```bash
+make agent-logs NAME=alice
+```
+
+This tails the systemd journal for the agent's service. Press Ctrl+C to stop.
+
+## Daily Operations
+
+### Container management
+
+| Command | Description |
+|---|---|
+| `make build` | Build the Docker image |
+| `make up` | Start the container |
+| `make down` | Stop and remove the container |
+| `make restart` | Restart the container |
+| `make shell` | Open a root shell inside the container |
+| `make logs` | Tail container logs |
+| `make clean` | Remove image (home directories are preserved) |
+
+### Agent management
+
+All agent commands require the container to be running (`make up`).
+
+| Command | Description |
+|---|---|
+| `make create-agent NAME=alice` | Create an agent with the base persona |
+| `make create-agent NAME=alice PERSONA=coder` | Create an agent with a specialist persona |
+| `make remove-agent NAME=alice` | Remove an agent and its service |
+| `make update-agent NAME=alice PERSONA=reviewer` | Change an agent's persona |
+| `make list-agents` | List all agents and their service status |
+| `make list-personas` | List available personas |
+| `make agent-logs NAME=alice` | Tail an agent's service logs |
+| `make agent-shell NAME=alice` | Open a shell as the agent user |
+
+### Inter-agent mail
+
+```bash
+make mail TO=alice MSG="Check the auth module"
+make mail TO=alice FROM=bob MSG="Review my changes" SUBJECT="Code review"
+```
+
+### API key management
+
+| Command | Description |
+|---|---|
+| `make set-api-key NAME=alice KEY=ANTHROPIC_API_KEY=sk-...` | Set an API key for an agent |
+| `make get-api-keys NAME=alice` | Show an agent's API keys (masked) |
+| `make remove-api-key NAME=alice KEY=OPENAI_API_KEY` | Remove a specific API key |
+| `make clear-api-keys NAME=alice` | Remove all API keys from an agent |
+| `make list-providers` | List known API key provider names |
+
+### Snapshots
+
+Snapshots track agent home directory state over time. These run on the host (container not required).
+
+```bash
+make snapshot-init            # Initialize the snapshot repository (run once)
+make snapshot                 # Take a snapshot
+make snapshot MSG="milestone" # Take a snapshot with a message
+make snapshot-log             # Show snapshot history
+make snapshot-diff            # Show changes since last snapshot
+make snapshot-status          # Summarize changes since last snapshot
+```
 
 ## Customizing Configuration
 
-### For All Users (Global)
+Configuration files live in `config/` and are baked into the image at build time. After editing any config, rebuild and restart:
 
-Edit files in `config/profile.d/`:
 ```bash
-nano config/profile.d/custom-env.sh
+make build && make restart
 ```
 
-Then rebuild the image:
-```bash
-docker-compose build
-```
-
-### For New Users (Template)
-
-Edit files in `config/skel/`:
-```bash
-nano config/skel/.bashrc
-```
-
-Then rebuild the image:
-```bash
-docker-compose build
-```
-
-### For Systemd User Services
-
-1. Add service files to `config/skel/.config/systemd/user/`
-2. Rebuild the image
-3. Inside the container, enable and start services:
-   ```bash
-   systemctl --user enable example.service
-   systemctl --user start example.service
-   ```
-
-## Stopping and Cleaning Up
-
-Stop the container:
-```bash
-docker-compose down
-```
-
-Remove the image:
-```bash
-docker rmi arch-dev:latest
-```
-
-Clean up all data (WARNING: This deletes the home directory contents):
-```bash
-rm -rf home/*  # Be careful!
-```
+- **`config/skel/`** — Template for new agent home directories. Changes apply to agents created after rebuilding.
+- **`config/profile.d/`** — Global shell environment scripts loaded by all agents.
+- **`config/personas/`** — Agent persona definitions. Add a new `.md` file to create a new persona.
+- **`config/api-keys/`** — API key configuration templates.
+- **`config/systemd/`** — Systemd service template for agent services.
 
 ## Troubleshooting
 
 ### Build fails with network errors
 
-If you see errors like "Could not resolve host", this means the build environment cannot access the Arch Linux package repositories. You'll need to build the image on a machine with internet access.
+The build needs access to Arch Linux package repositories. Build on a machine with internet access.
 
-### Changes to config files don't appear
+### Config changes don't take effect
 
-Remember to rebuild the image after making changes:
+Files in `config/` and `scripts/` are copied into the image at build time. Rebuild and restart:
+
 ```bash
-docker-compose build
-docker-compose up -d
+make build && make restart
 ```
 
 ### Build fails on Apple Silicon / ARM hosts
 
-The Arch Linux base image only publishes `linux/amd64` manifests. The `platform: linux/amd64` setting in `docker-compose.yml` tells Docker to use QEMU emulation on non-amd64 hosts. Make sure Docker Desktop's QEMU/Rosetta emulation is enabled (it is by default).
+The Arch Linux base image is `amd64` only. Docker uses QEMU emulation automatically on ARM hosts via the `platform: linux/amd64` setting in `docker-compose.yml`. Ensure Docker Desktop's QEMU/Rosetta emulation is enabled.
 
-### Home directory permissions
+### Agent won't start
 
-If you encounter permission issues, you may need to adjust the user ID in the Dockerfile to match your host system user ID.
+Check the agent's service logs:
 
-## File Structure Reference
-
-```
-.
-├── Dockerfile              # Main Docker image definition
-├── docker-compose.yml      # Docker Compose configuration
-├── home/                   # User home (mounted as /home/user)
-├── config/
-│   ├── README.md          # Detailed config documentation
-│   ├── skel/              # Template for new user homes → /etc/skel
-│   │   ├── .bashrc
-│   │   ├── .bash_profile
-│   │   └── .config/systemd/user/
-│   │       └── example.service
-│   └── profile.d/         # Global environment scripts → /etc/profile.d
-│       └── custom-env.sh
-└── USAGE.md               # This file
+```bash
+make agent-logs NAME=alice
 ```
 
-## Next Steps
+Open a root shell to inspect further:
 
-1. Explore the configuration files in `config/`
-2. Add your own customizations
-3. Test the setup with your development workflow
-4. Commit your configuration changes to version control
+```bash
+make shell
+systemctl status agent@alice.service
+```
 
-For more detailed information, see:
-- `README.md` - Project overview and detailed documentation
-- `config/README.md` - Configuration file details and examples
+### All available commands
+
+Run `make help` (or just `make`) to see every available target with usage examples.
+
+## Further Reading
+
+- `README.md` — Project overview, architecture, and security model
+- `config/README.md` — Detailed configuration reference
+- `scripts/README.md` — Script documentation

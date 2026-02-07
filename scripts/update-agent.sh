@@ -148,9 +148,12 @@ chmod 644 "$CLAUDE_DIR/config.json"
 echo "  -> config.json updated"
 
 # 3. Restart the agent service to pick up the new persona
-if systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
-    systemctl restart --no-block "agent@${USERNAME}.service"
-    echo "  -> agent@${USERNAME}.service restarting"
+if timeout 5 systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
+    if timeout 10 systemctl restart --no-block "agent@${USERNAME}.service" 2>/dev/null; then
+        echo "  -> agent@${USERNAME}.service restarting"
+    else
+        echo "  -> agent@${USERNAME}.service restart queued (may take a moment)"
+    fi
 else
     echo "  -> Warning: agent@${USERNAME}.service is not enabled (skipped restart)"
 fi

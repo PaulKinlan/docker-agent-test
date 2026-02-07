@@ -25,7 +25,7 @@ printf "%-20s %-12s %-10s %s\n" "----" "-------" "------" "----"
 
 for USERNAME in $AGENTS_MEMBERS; do
     SERVICE="agent@${USERNAME}.service"
-    ACTIVE=$(systemctl is-active "$SERVICE" 2>/dev/null || echo "inactive")
+    ACTIVE=$(timeout 5 systemctl is-active "$SERVICE" 2>/dev/null || echo "inactive")
     HOME_DIR="/home/$USERNAME"
     HOME_EXISTS="yes"
     [[ -d "$HOME_DIR" ]] || HOME_EXISTS="missing"

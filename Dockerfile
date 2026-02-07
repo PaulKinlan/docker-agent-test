@@ -80,10 +80,25 @@ RUN echo 'listen on localhost' > /etc/smtpd/smtpd.conf && \
     echo 'match from local for local action "local"' >> /etc/smtpd/smtpd.conf
 
 # Mask services that are unnecessary inside Docker and block the boot process.
-# systemd-networkd-wait-online blocks for ~2 minutes waiting for network
-# connectivity that Docker manages externally, preventing multi-user.target
-# (and therefore all agent services) from starting on time.
-RUN systemctl mask systemd-networkd-wait-online.service
+#
+# systemd-networkd-wait-online: Blocks ~2 minutes waiting for network
+#   connectivity that Docker manages externally, preventing multi-user.target
+#   (and therefore all agent services) from starting on time.
+#
+# systemd-firstboot: Runs Before=basic.target on every container start
+#   (ConditionFirstBoot=yes, because the root filesystem is ephemeral) and
+#   hangs waiting for interactive input when a TTY is attached. This prevents
+#   basic.target from being reached and blocks all agent services.
+#   Its job (locale, timezone, hostname, root password) is unnecessary here:
+#   these settings are either inherited from Docker or lost on restart anyway.
+#
+#   To revert to pre-seeding instead of masking, replace the firstboot mask
+#   line below with:
+#     RUN systemd-firstboot --locale=C.UTF-8 --timezone=UTC --hostname=agent-host --root-shell=/bin/bash
+#   This satisfies firstboot so it exits immediately on boot instead of
+#   prompting, but still lets it run.
+RUN systemctl mask systemd-networkd-wait-online.service && \
+    systemctl mask systemd-firstboot.service
 
 # Enable boot-time services
 RUN systemctl enable api-keys-sync.service && \

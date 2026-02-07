@@ -211,34 +211,69 @@ if ! timeout --kill-after=5 10 systemctl daemon-reload 2>&1; then
     echo "  Warning: systemctl daemon-reload timed out or failed (continuing anyway)" >&2
 fi
 
-# Verify systemd is ready (basic.target must be active for the After= dependency)
-echo "  Checking if systemd boot is complete..."
-if ! timeout --kill-after=5 5 systemctl is-active --quiet basic.target 2>/dev/null; then
-    echo "  Waiting for systemd to finish booting (up to 30s)..." >&2
-    timeout --kill-after=5 30 systemctl is-system-running --wait 2>/dev/null || true
-    echo "  Proceeding with service start."
+# Wait for basic.target (the After= dependency in agent@.service).
+# In Docker, systemctl is-system-running may never report "running", so
+# poll the specific target we need instead.
+echo "  Waiting for basic.target..."
+BOOT_WAIT=0
+BOOT_TIMEOUT=60
+while ! systemctl is-active --quiet basic.target 2>/dev/null; do
+    if (( BOOT_WAIT >= BOOT_TIMEOUT )); then
+        echo "  Warning: basic.target not reached after ${BOOT_TIMEOUT}s (continuing anyway)." >&2
+        break
+    fi
+    sleep 1
+    ((BOOT_WAIT++))
+done
+if (( BOOT_WAIT > 0 && BOOT_WAIT < BOOT_TIMEOUT )); then
+    echo "  basic.target reached after ${BOOT_WAIT}s."
 fi
 
 # Start the service (timeout prevents Docker/D-Bus hangs)
 echo "  Starting agent@${USERNAME}.service..."
 START_OUTPUT=$(timeout --kill-after=5 30 systemctl start "agent@${USERNAME}.service" 2>&1) || {
-    echo "  Warning: agent@${USERNAME}.service failed to start." >&2
+    echo "  Warning: systemctl start returned an error." >&2
     if [[ -n "$START_OUTPUT" ]]; then
         echo "$START_OUTPUT" >&2
     fi
+}
+
+# Verify the service is actually running (handles slow start and queued jobs)
+echo "  Verifying service status..."
+SERVICE_OK=false
+for i in $(seq 1 10); do
+    if systemctl is-active --quiet "agent@${USERNAME}.service" 2>/dev/null; then
+        SERVICE_OK=true
+        break
+    fi
+    sleep 1
+done
+
+if [[ "$SERVICE_OK" != "true" ]]; then
     echo "" >&2
-    timeout --kill-after=5 10 systemctl status "agent@${USERNAME}.service" --no-pager 2>&1 | sed 's/^/  /' >&2 || true
+    echo "  Error: agent@${USERNAME}.service is not running." >&2
+    echo "" >&2
+    echo "  Service status:" >&2
+    timeout --kill-after=5 10 systemctl status "agent@${USERNAME}.service" --no-pager 2>&1 | sed 's/^/    /' >&2 || true
     echo "" >&2
     # Show journal output if any
     JOURNAL_OUTPUT=$(timeout --kill-after=5 10 journalctl -u "agent@${USERNAME}.service" --no-pager -n 20 2>&1) || true
     if [[ -n "$JOURNAL_OUTPUT" ]] && ! echo "$JOURNAL_OUTPUT" | grep -q "No entries"; then
-        echo "  Recent logs:" >&2
-        echo "$JOURNAL_OUTPUT" | sed 's/^/  /' >&2
+        echo "  Journal logs:" >&2
+        echo "$JOURNAL_OUTPUT" | sed 's/^/    /' >&2
+    else
+        echo "  No journal entries found for this service." >&2
+        echo "  This usually means the process never started." >&2
+        echo "  Check if basic.target is active: systemctl is-active basic.target" >&2
     fi
+    echo "" >&2
+    echo "  Diagnostics:" >&2
+    echo "    basic.target: $(systemctl is-active basic.target 2>/dev/null || echo 'not active')" >&2
+    echo "    system state: $(systemctl is-system-running 2>/dev/null || echo 'unknown')" >&2
     echo "" >&2
     echo "  Check logs with: journalctl -u agent@${USERNAME}.service" >&2
     exit 1
-}
+fi
 
 echo "  -> agent@${USERNAME}.service enabled and active"
 

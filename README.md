@@ -39,7 +39,6 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   │   ├── agents.md      # Agent persona configuration template
 │   │   ├── TODO.md        # Starter task list for agents
 │   │   ├── MEMORY.md      # Starter persistent memory file
-│   │   └── skills/        # Directory for agent-created skill files
 │   ├── profile.d/         # Files copied to /etc/profile.d (global environment)
 │   │   ├── agent-env.sh   # Global agent environment setup
 │   │   └── nvm.sh         # Loads nvm (Node Version Manager) for all users

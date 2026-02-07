@@ -8,7 +8,7 @@ Maintain these files in your home directory:
 
 - `TODO.md` - Your task list
 - `MEMORY.md` - Your persistent memory and learnings
-- `skills/` - Directory containing your learned skills
+- `.claude/skills/` - Directory containing your learned skills (Claude Code skill format)
 
 ## Getting Work
 
@@ -28,7 +28,7 @@ echo "p *" | mail
 When you receive mail:
 1. Read and understand the request
 2. Add it to your `TODO.md` (Pending section, with sender and date)
-3. Check `skills/` for relevant procedures
+3. Check `~/.claude/skills/` for relevant procedures
 4. Work through the task
 5. Update `MEMORY.md` with any learnings
 6. Report results back to the sender via `mail`
@@ -85,36 +85,61 @@ Record:
 
 ## Skills
 
-When you notice common patterns or solve recurring problems, create a skill file in `~/skills/`.
+When you notice common patterns or solve recurring problems, create a skill in `~/.claude/skills/`. Skills follow the Claude Code skill format: each skill is a directory containing a `SKILL.md` file with YAML frontmatter.
 
-```bash
-mkdir -p ~/skills
+### Directory structure
+
+```
+~/.claude/skills/
+├── data-conversion/
+│   └── SKILL.md
+├── error-diagnosis/
+│   ├── SKILL.md
+│   └── common-errors.md
+└── report-generation/
+    └── SKILL.md
 ```
 
-A skill file documents how to handle a specific type of task:
+### Skill file format
+
+Each `SKILL.md` begins with YAML frontmatter between `---` markers, followed by the skill content:
 
 ```markdown
-# skills/data-conversion.md
-
-## Trigger
-When asked to convert between data formats (CSV, JSON, XML)
+---
+name: data-conversion
+description: >
+  Convert between data formats (CSV, JSON, XML).
+  Use when asked to transform data from one format to another.
+---
 
 ## Steps
+
 1. Identify source and target formats
 2. Use jq for JSON, csvtool for CSV
 3. Validate output before returning
 
 ## Common Errors
+
 - Empty input: Check file exists and has content first
 - Encoding issues: Use iconv if UTF-8 problems arise
 ```
 
-Create skills when you:
-- Solve the same type of problem multiple times
-- Find a workaround for a common error
-- Develop an efficient process for a task type
+### YAML frontmatter fields
 
-Before starting any task, check your `skills/` directory for relevant guides.
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | No | Skill identifier (lowercase letters, numbers, hyphens). Defaults to directory name |
+| `description` | Recommended | What the skill does and when to use it. Include keywords for discoverability |
+
+### When to create skills
+
+- You solve the same type of problem multiple times
+- You find a workaround for a common error
+- You develop an efficient process for a task type
+
+### Using skills
+
+Before starting any task, check `~/.claude/skills/` for relevant guides. For complex skills, add supporting files (examples, reference material) alongside `SKILL.md`.
 
 ## Communication
 
@@ -150,7 +175,7 @@ echo "Need jq installed for JSON processing tasks" | mail -s "Software request: 
 If you receive a mail and cannot understand what is being asked:
 
 1. Check your `MEMORY.md` for context about the sender or related past work
-2. Check your `skills/` for relevant procedures
+2. Check `~/.claude/skills/` for relevant procedures
 3. If still unclear, reply to the sender asking for clarification:
    - Be specific about what you don't understand
    - Suggest what you think they might mean
@@ -159,7 +184,7 @@ If you receive a mail and cannot understand what is being asked:
 If you receive a clarification request from another user:
 
 1. Review your `MEMORY.md` for relevant information
-2. Check your `skills/` for applicable knowledge
+2. Check `~/.claude/skills/` for applicable knowledge
 3. Reply with helpful context or suggest someone else who might know
 
 ## Available Tools
@@ -185,10 +210,10 @@ Use these tools to complete your assigned tasks.
 2. Read new messages: `echo "p 1" | mail`
 3. Add new tasks to `TODO.md` (Pending section)
 4. Pick the highest priority task, move to In Progress
-5. Check `skills/` for relevant procedures
+5. Check `~/.claude/skills/` for relevant procedures
 6. Complete the task using available Unix tools
 7. Update `MEMORY.md` with learnings
-8. Create/update skills if you found reusable patterns
+8. Create/update skills in `~/.claude/skills/` if you found reusable patterns
 9. Report results back to requester: `echo "Done: summary" | mail -s "Re: subject" sender`
 10. Mark task complete in `TODO.md` with today's date
 11. If no new mail and no pending tasks, do nothing — this is expected

@@ -7,8 +7,8 @@
 #   1. Creates a Linux user (home dir populated from /etc/skel)
 #   2. Adds the user to the 'agents' group
 #   3. Builds the agent's agents.md from base persona + optional specialist persona
-#   4. Creates a root-owned .claude/ directory in the user's home
-#      (readable by the user, writable only by root)
+#   4. Creates an agent-writable .claude/ directory (with skills/ subdirectory)
+#      and a root-owned read-only config.json inside it
 #   5. Configures per-agent API keys if provided
 #   6. Enables and starts the agent@<username> systemd service
 #
@@ -178,6 +178,10 @@ cat > "$CLAUDE_DIR/config.json" <<CONF
 CONF
 chown root:root "$CLAUDE_DIR/config.json"
 chmod 644 "$CLAUDE_DIR/config.json"
+# Create skills directory for Claude Code skills
+mkdir -p "$CLAUDE_DIR/skills"
+chown "$USERNAME:$USERNAME" "$CLAUDE_DIR/skills"
+
 echo "  -> .claude/ directory created (agent-writable, config.json root-owned)"
 
 # 4. Configure per-agent API keys if provided

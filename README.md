@@ -293,3 +293,4 @@ See [`scripts/README.md`](scripts/README.md) for full documentation of `snapshot
 - The home directory is persisted outside the container in the repository
 - Configuration files can be edited in the repository and will be applied when the image is rebuilt
 - Systemd is available but requires privileged mode (enabled in docker-compose.yml)
+- The Arch Linux base image only provides `linux/amd64` builds. On ARM hosts (e.g., Apple Silicon Macs), Docker uses QEMU emulation automatically via the `platform: linux/amd64` setting in docker-compose.yml.

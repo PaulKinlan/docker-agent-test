@@ -51,6 +51,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── remove-agent.sh    # Remove an agent user
     ├── list-agents.sh     # List agents and their status
     ├── manage-api-keys.sh # Manage per-agent API keys
+    ├── send-mail.sh       # Send mail to an agent user
     ├── snapshot-agents.sh # Snapshot agent state (host-only)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
@@ -143,6 +144,18 @@ Tails the systemd journal for the specified agent.
 **Open a shell as an agent:**
 ```bash
 make agent-shell NAME=alice
+```
+
+**Send mail to an agent:**
+```bash
+# Send from root (default)
+make mail TO=alice MSG="Please check the build logs"
+
+# Send from another agent
+make mail TO=alice FROM=bob MSG="Can you review my PR?"
+
+# With a custom subject
+make mail TO=alice FROM=bob SUBJECT="Code Review" MSG="PR #42 is ready"
 ```
 
 ### API Key Management

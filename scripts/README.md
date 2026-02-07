@@ -68,7 +68,8 @@ make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
 4. Builds `agents.md` from base persona + optional specialist persona
 5. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
 6. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
-7. Reloads systemd to pick up the new instance, then enables and starts the `agent@<username>.service` unit (blocks until active or reports failure with diagnostic output)
+7. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
+8. Reloads systemd to pick up the new instance, then enables and starts the `agent@<username>.service` unit (blocks until active or reports failure with diagnostic output including recent journal entries)
 
 **Examples:**
 ```bash

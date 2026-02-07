@@ -17,43 +17,32 @@ StandardError=journal
 SyslogIdentifier=agent-%i
 
 # ── Security hardening ──────────────────────────────────────
-# Prevent privilege escalation
-NoNewPrivileges=true
-
-# Make /usr and /boot read-only (use 'full' instead of 'strict' because
-# 'strict' requires remounting the root filesystem read-only, which fails
-# on Docker's overlay2 storage driver)
-ProtectSystem=full
-
-# Private /tmp so agents cannot see each other's temp files
-PrivateTmp=true
-
-# Restrict the set of capabilities to empty (agent needs none)
-CapabilityBoundingSet=
-AmbientCapabilities=
-
-# Prevent gaining capabilities via setuid/setgid binaries
-RestrictSUIDSGID=true
-
-# Restrict address families to only what's needed (IPv4, IPv6, Unix sockets)
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-
-# ── Kernel-level protections (disabled for Docker compatibility) ──
-# These directives fail silently in Docker containers, especially on
-# older kernels (4.x), causing the service to stay inactive (dead)
-# with no journal output. The container boundary provides equivalent
-# kernel-level isolation, so these are redundant here.
+# Many systemd security and resource directives fail silently in Docker
+# containers on older kernels (e.g., 4.4.x), causing services to go
+# straight to inactive (dead) with no journal output. The seccomp-based
+# directives (RestrictAddressFamilies, RestrictSUIDSGID) and cgroup-based
+# directives (MemoryMax, CPUQuota) are the primary offenders. Mount
+# namespace directives (ProtectSystem, PrivateTmp) can also fail depending
+# on the Docker storage driver and kernel version.
 #
-# To re-enable outside Docker, uncomment the following:
+# The Docker container boundary already provides process and filesystem
+# isolation. Agents still run as unprivileged users with no sudo access.
+#
+# To re-enable on newer kernels (5.x+) or outside Docker, uncomment:
+# NoNewPrivileges=true
+# ProtectSystem=full
+# PrivateTmp=true
+# CapabilityBoundingSet=
+# AmbientCapabilities=
+# RestrictSUIDSGID=true
+# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 # ProtectKernelTunables=true
 # ProtectKernelModules=true
 # ProtectControlGroups=true
 # ProtectKernelLogs=true
 # RestrictNamespaces=true
-
-# Basic resource constraints (tune as needed)
-MemoryMax=512M
-CPUQuota=50%
+# MemoryMax=512M
+# CPUQuota=50%
 
 [Install]
 WantedBy=multi-user.target

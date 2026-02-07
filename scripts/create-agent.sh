@@ -198,28 +198,39 @@ if [[ ${#API_KEYS[@]} -gt 0 ]]; then
 fi
 
 # 5. Enable and start the agent service for this user
-systemctl enable "agent@${USERNAME}.service"
+# All systemctl calls use timeout with --kill-after to prevent indefinite
+# hangs caused by D-Bus communication failures in Docker containers.
+echo "  Enabling agent@${USERNAME}.service..."
+if ! timeout --kill-after=5 10 systemctl enable "agent@${USERNAME}.service" 2>&1; then
+    echo "  Warning: systemctl enable timed out or failed (continuing anyway)" >&2
+fi
 
 # Ensure systemd has picked up the new instance before starting
-systemctl daemon-reload
+echo "  Reloading systemd daemon..."
+if ! timeout --kill-after=5 10 systemctl daemon-reload 2>&1; then
+    echo "  Warning: systemctl daemon-reload timed out or failed (continuing anyway)" >&2
+fi
 
 # Verify systemd is ready (basic.target must be active for the After= dependency)
-if ! systemctl is-active --quiet basic.target 2>/dev/null; then
-    echo "  Waiting for systemd to finish booting..." >&2
-    timeout 30 systemctl is-system-running --wait 2>/dev/null || true
+echo "  Checking if systemd boot is complete..."
+if ! timeout --kill-after=5 5 systemctl is-active --quiet basic.target 2>/dev/null; then
+    echo "  Waiting for systemd to finish booting (up to 30s)..." >&2
+    timeout --kill-after=5 30 systemctl is-system-running --wait 2>/dev/null || true
+    echo "  Proceeding with service start."
 fi
 
 # Start the service (timeout prevents Docker/D-Bus hangs)
-START_OUTPUT=$(timeout 30 systemctl start "agent@${USERNAME}.service" 2>&1) || {
+echo "  Starting agent@${USERNAME}.service..."
+START_OUTPUT=$(timeout --kill-after=5 30 systemctl start "agent@${USERNAME}.service" 2>&1) || {
     echo "  Warning: agent@${USERNAME}.service failed to start." >&2
     if [[ -n "$START_OUTPUT" ]]; then
         echo "$START_OUTPUT" >&2
     fi
     echo "" >&2
-    systemctl status "agent@${USERNAME}.service" --no-pager 2>&1 | sed 's/^/  /' >&2 || true
+    timeout --kill-after=5 10 systemctl status "agent@${USERNAME}.service" --no-pager 2>&1 | sed 's/^/  /' >&2 || true
     echo "" >&2
     # Show journal output if any
-    JOURNAL_OUTPUT=$(journalctl -u "agent@${USERNAME}.service" --no-pager -n 20 2>&1) || true
+    JOURNAL_OUTPUT=$(timeout --kill-after=5 10 journalctl -u "agent@${USERNAME}.service" --no-pager -n 20 2>&1) || true
     if [[ -n "$JOURNAL_OUTPUT" ]] && ! echo "$JOURNAL_OUTPUT" | grep -q "No entries"; then
         echo "  Recent logs:" >&2
         echo "$JOURNAL_OUTPUT" | sed 's/^/  /' >&2

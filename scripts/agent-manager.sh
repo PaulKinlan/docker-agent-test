@@ -33,9 +33,12 @@ for USERNAME in $AGENTS_MEMBERS; do
     fi
 
     # Enable and start (idempotent, with timeout to avoid D-Bus hangs)
-    timeout 10 systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
+    # --kill-after sends SIGKILL if SIGTERM doesn't work (e.g., stuck D-Bus call)
+    echo "  Enabling agent@${USERNAME}.service..."
+    timeout --kill-after=5 10 systemctl enable "agent@${USERNAME}.service" 2>/dev/null || true
 
-    if timeout 10 systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
+    echo "  Starting agent@${USERNAME}.service..."
+    if timeout --kill-after=5 10 systemctl start --no-block "agent@${USERNAME}.service" 2>/dev/null; then
         echo "  [OK]   $USERNAME — agent starting"
         ((STARTED++))
     else

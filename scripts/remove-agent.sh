@@ -45,10 +45,13 @@ fi
 echo "Removing agent user: $USERNAME"
 
 # 1. Stop and disable the agent service
-if timeout 5 systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
-    # Use timeout to prevent hanging if systemd D-Bus is slow inside Docker
-    timeout 10 systemctl stop "agent@${USERNAME}.service" 2>/dev/null || true
-    timeout 10 systemctl disable "agent@${USERNAME}.service" 2>/dev/null || true
+echo "  Checking service status..."
+if timeout --kill-after=5 5 systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
+    # Use timeout with --kill-after to prevent hanging if systemd D-Bus is slow inside Docker
+    echo "  Stopping agent@${USERNAME}.service..."
+    timeout --kill-after=5 10 systemctl stop "agent@${USERNAME}.service" 2>/dev/null || true
+    echo "  Disabling agent@${USERNAME}.service..."
+    timeout --kill-after=5 10 systemctl disable "agent@${USERNAME}.service" 2>/dev/null || true
     echo "  -> agent@${USERNAME}.service stopped and disabled"
 else
     echo "  -> No active service found (skipping)"

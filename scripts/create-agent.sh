@@ -200,13 +200,22 @@ fi
 # 5. Enable and start the agent service for this user
 systemctl enable "agent@${USERNAME}.service"
 
-# Start the service and wait for it to become active (timeout prevents Docker/D-Bus hangs)
-if timeout 30 systemctl start "agent@${USERNAME}.service" 2>&1; then
-    echo "  -> agent@${USERNAME}.service enabled and active"
-else
+# Ensure systemd has picked up the new instance before starting
+systemctl daemon-reload
+
+# Start the service (timeout prevents Docker/D-Bus hangs)
+START_OUTPUT=$(timeout 30 systemctl start "agent@${USERNAME}.service" 2>&1) || {
     echo "  Warning: agent@${USERNAME}.service failed to start." >&2
+    if [[ -n "$START_OUTPUT" ]]; then
+        echo "$START_OUTPUT" >&2
+    fi
+    echo "" >&2
+    systemctl status "agent@${USERNAME}.service" --no-pager 2>&1 | sed 's/^/  /' >&2 || true
+    echo "" >&2
     echo "  Check logs with: journalctl -u agent@${USERNAME}.service" >&2
     exit 1
-fi
+}
+
+echo "  -> agent@${USERNAME}.service enabled and active"
 
 echo "Agent '$USERNAME' is ready."

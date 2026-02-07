@@ -101,7 +101,7 @@ There are no automated tests. Verify changes manually by building the image and 
 ### Security model — do not weaken
 
 - Agents run as unprivileged users in the `agents` group with no sudo access.
-- The filesystem is read-only for agents except their own home directory.
+- `/usr` and `/boot` are read-only for agents. Unix permissions prevent writing outside their own home directory.
 - Each agent gets a private `/tmp`, no Linux capabilities, and restricted address families.
 - Memory is capped at 512M and CPU at 50% per agent.
 - Home directories are mode 700. The `.claude/` directory is root-owned.

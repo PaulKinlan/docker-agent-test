@@ -20,9 +20,10 @@ SyslogIdentifier=agent-%i
 # Prevent privilege escalation
 NoNewPrivileges=true
 
-# Make the entire filesystem read-only except the agent's own home
-ProtectSystem=strict
-ReadWritePaths=/home/%i
+# Make /usr and /boot read-only (use 'full' instead of 'strict' because
+# 'strict' requires remounting the root filesystem read-only, which fails
+# on Docker's overlay2 storage driver)
+ProtectSystem=full
 
 # Private /tmp so agents cannot see each other's temp files
 PrivateTmp=true
@@ -42,8 +43,10 @@ RestrictSUIDSGID=true
 # Restrict address families to only what's needed (IPv4, IPv6, Unix sockets)
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
-# Prevent writing to or mounting new filesystems
+# Prevent access to kernel log buffer
 ProtectKernelLogs=true
+
+# Prevent creating new namespaces
 RestrictNamespaces=true
 
 # Basic resource constraints (tune as needed)

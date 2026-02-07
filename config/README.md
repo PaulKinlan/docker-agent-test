@@ -75,6 +75,7 @@ Files in this directory are copied to `/etc/profile.d/` in the container. These 
 
 **Current files:**
 - `agent-env.sh` - Global agent environment setup (platform vars, umask, PATH)
+- `nvm.sh` - Loads nvm (Node Version Manager) for all users
 
 **How to use:**
 1. Create `.sh` files in this directory

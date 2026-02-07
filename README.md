@@ -9,6 +9,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Customizable `/etc/skel` files for new users
 - Customizable `/etc/profile.d` scripts for global environment setup
 - Systemd support enabled
+- Development tools: git, python, node (system + nvm), base-devel (gcc, make), curl, wget, jq, ripgrep, tree, openssh, unzip
+- Node Version Manager (nvm) installed system-wide with LTS pre-installed
 - Multi-LLM API key management (global and per-agent)
 - Support for Anthropic, OpenAI, Google, Mistral, and many other providers
 - Local mail system for inter-agent communication (opensmtpd + s-nail)
@@ -31,7 +33,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   │   ├── CLAUDE.md      # Default operating instructions for agents
 │   │   └── agents.md      # Agent persona configuration template
 │   ├── profile.d/         # Files copied to /etc/profile.d (global environment)
-│   │   └── agent-env.sh   # Global agent environment setup
+│   │   ├── agent-env.sh   # Global agent environment setup
+│   │   └── nvm.sh         # Loads nvm (Node Version Manager) for all users
 │   └── systemd/           # Systemd service definitions
 │       ├── agent@.service          # Per-agent service template
 │       ├── agent-manager.service   # Boot-time reconciliation service

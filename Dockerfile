@@ -79,6 +79,12 @@ RUN echo 'listen on localhost' > /etc/smtpd/smtpd.conf && \
     echo 'action "local" mbox alias <aliases>' >> /etc/smtpd/smtpd.conf && \
     echo 'match from local for local action "local"' >> /etc/smtpd/smtpd.conf
 
+# Mask services that are unnecessary inside Docker and block the boot process.
+# systemd-networkd-wait-online blocks for ~2 minutes waiting for network
+# connectivity that Docker manages externally, preventing multi-user.target
+# (and therefore all agent services) from starting on time.
+RUN systemctl mask systemd-networkd-wait-online.service
+
 # Enable boot-time services
 RUN systemctl enable api-keys-sync.service && \
     systemctl enable agent-manager.service && \

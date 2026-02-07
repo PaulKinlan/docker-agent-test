@@ -318,6 +318,7 @@ See [`scripts/README.md`](scripts/README.md) for full documentation of `snapshot
 ## Notes
 
 - Agent users run as unprivileged users in the `agents` group with no sudo access. Unix permissions prevent agents from writing outside their own home directory (mode 700). Only root can install packages or modify the system. Systemd security hardening directives (NoNewPrivileges, ProtectSystem, PrivateTmp, CapabilityBoundingSet, RestrictAddressFamilies, resource limits, etc.) are commented out by default because they cause silent service failures inside Docker containers (cgroup delegation, overlay2 mount conflicts, seccomp layering). The Docker container boundary provides equivalent isolation. To re-enable for non-Docker deployments, uncomment them in `config/systemd/agent@.service`.
+- `systemd-networkd-wait-online.service` is masked in the Docker image because Docker manages networking externally. Without masking, this service blocks the boot for ~2 minutes waiting for network connectivity, which delays `multi-user.target` and prevents agent services from starting.
 - The home directory is persisted outside the container in the repository
 - Configuration files can be edited in the repository and will be applied when the image is rebuilt
 - Systemd is available but requires privileged mode (enabled in docker-compose.yml)

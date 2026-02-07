@@ -21,7 +21,6 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 
 ```
 .
-├── agent                   # CLI entry point (agent up / agent down)
 ├── Dockerfile              # Main Dockerfile using archlinux:latest
 ├── docker-compose.yml      # Docker Compose configuration
 ├── Makefile                # Convenience targets for container and agent management
@@ -61,20 +60,6 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 ## Usage
 
 ### Quick Start
-
-The `agent` script at the project root is the simplest way to manage the container:
-
-```bash
-# Start the agent host (auto-rebuilds if Dockerfile, config/, or scripts/ changed)
-./agent up
-
-# Stop the agent host
-./agent down
-```
-
-`agent up` checks whether the Docker image needs rebuilding by comparing file modification times in `Dockerfile`, `docker-compose.yml`, `config/`, and `scripts/` against the last image build time. If anything changed, it rebuilds automatically before starting.
-
-### Building and Running (manual)
 
 Using Docker Compose:
 ```bash

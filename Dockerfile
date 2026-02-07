@@ -10,6 +10,15 @@ RUN pacman -Syu --noconfirm && \
     systemd \
     nodejs \
     npm \
+    python \
+    python-pip \
+    curl \
+    wget \
+    jq \
+    ripgrep \
+    tree \
+    openssh \
+    unzip \
     s-nail \
     opensmtpd && \
     pacman -Scc --noconfirm
@@ -22,8 +31,18 @@ RUN mkdir -p /etc/sudoers.d && \
     echo '%agents ALL=(ALL) !ALL' > /etc/sudoers.d/deny-agents && \
     chmod 440 /etc/sudoers.d/deny-agents
 
-# Install Claude Code globally
+# Install Claude Code globally (uses system node)
 RUN npm install -g @anthropic-ai/claude-code
+
+# Install nvm system-wide so agents can manage their own Node versions
+# System node (pacman) is kept for root/Claude Code; nvm is for agent dev work
+ENV NVM_DIR=/usr/local/share/nvm
+RUN mkdir -p "$NVM_DIR" && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
+    . "$NVM_DIR/nvm.sh" && \
+    nvm install --lts && \
+    nvm alias default lts/* && \
+    chmod -R a+rX "$NVM_DIR"
 
 # Copy persona definitions (used by create-agent.sh to build agents.md)
 COPY config/personas/ /etc/agent-personas/

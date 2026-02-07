@@ -16,19 +16,21 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=agent-%i
 
-# ── Security hardening ──────────────────────────────────────
-# Many systemd security and resource directives fail silently in Docker
-# containers on older kernels (e.g., 4.4.x), causing services to go
-# straight to inactive (dead) with no journal output. The seccomp-based
-# directives (RestrictAddressFamilies, RestrictSUIDSGID) and cgroup-based
-# directives (MemoryMax, CPUQuota) are the primary offenders. Mount
-# namespace directives (ProtectSystem, PrivateTmp) can also fail depending
-# on the Docker storage driver and kernel version.
+# ── Security hardening (disabled for Docker compatibility) ───
+# Many systemd security and resource directives fail silently inside
+# Docker containers, causing services to go straight to inactive (dead)
+# with no journal output. Common causes:
+#   - Cgroup: MemoryMax/CPUQuota require cgroup delegation that Docker
+#     does not always provide to the container's systemd.
+#   - Mount namespaces: ProtectSystem/PrivateTmp conflict with Docker's
+#     overlay2 filesystem and mount setup.
+#   - Seccomp: RestrictAddressFamilies/RestrictSUIDSGID can conflict
+#     with the container's seccomp/namespace configuration.
 #
 # The Docker container boundary already provides process and filesystem
 # isolation. Agents still run as unprivileged users with no sudo access.
 #
-# To re-enable on newer kernels (5.x+) or outside Docker, uncomment:
+# To re-enable outside Docker, uncomment:
 # NoNewPrivileges=true
 # ProtectSystem=full
 # PrivateTmp=true

@@ -6,6 +6,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 
 - Uses the latest Arch Linux base image
 - Home directory mounted from the repository (`./home`)
+- System logs mounted to `./log` for external observation (journald, smtpd)
+- Mail spool mounted to `./mail` for reading inter-agent messages from the host
 - Customizable `/etc/skel` files for new users
 - Customizable `/etc/profile.d` scripts for global environment setup
 - Systemd support enabled
@@ -23,6 +25,9 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 ├── docker-compose.yml      # Docker Compose configuration
 ├── Makefile                # Convenience targets for container and agent management
 ├── home/                   # Persistent agent home directories (mounted as /home)
+├── log/                    # System logs from container (mounted as /var/log)
+│   └── journal/            # Systemd journal (persistent agent service logs)
+├── mail/                   # Mail spool from container (mounted as /var/spool/mail)
 ├── config/
 │   ├── api-keys/          # API key configuration (copied to /etc/agent-api-keys)
 │   │   ├── global.env.template  # Template for global API keys
@@ -210,6 +215,47 @@ To run systemd commands for each user, you can:
 ### Home Directory Persistence
 
 The `./home` directory in the repository is mounted as `/home/user` in the container. Any files you create or modify in `/home/user` inside the container will persist in the `./home` directory on your host machine.
+
+### Observing Agents From the Host
+
+Several container directories are mounted to the host so you can observe agent activity without logging into the container.
+
+| Host path | Container path | Contents |
+|-----------|---------------|----------|
+| `./home` | `/home` | Agent home directories, including `.agent.log` per agent |
+| `./log` | `/var/log` | System logs — journald, smtpd, and other service logs |
+| `./log/journal` | `/var/log/journal` | Systemd journal (binary) — all agent service stdout/stderr |
+| `./mail` | `/var/spool/mail` | Mail spool — one mbox file per agent for inter-agent messages |
+
+**Reading agent service logs from the host:**
+```bash
+# Read journal logs for a specific agent (requires systemd on the host)
+journalctl --directory=./log/journal -u agent@alice.service
+
+# Follow all agent logs in real time
+journalctl --directory=./log/journal -u 'agent@*' -f
+
+# Or read per-agent log files directly
+cat ./home/alice/.agent.log
+```
+
+**Reading agent mail from the host:**
+```bash
+# View mail for a specific agent (plain text mbox format)
+cat ./mail/alice
+
+# List agents with mail
+ls -la ./mail/
+```
+
+**Reading system logs:**
+```bash
+# View all journal entries
+journalctl --directory=./log/journal
+
+# View smtpd (mail) activity
+journalctl --directory=./log/journal -u smtpd.service
+```
 
 ## Notes
 

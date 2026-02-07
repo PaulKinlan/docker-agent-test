@@ -10,6 +10,10 @@ services:
     volumes:
       # Mount entire /home so every agent's home dir is visible on the host
       - ./home:/home
+      # Mount /var/log so system and agent logs (journald, smtpd) are visible on the host
+      - ./log:/var/log
+      # Mount mail spool so inter-agent messages are visible on the host
+      - ./mail:/var/spool/mail
     # Systemd needs these tmpfs mounts
     tmpfs:
       - /run

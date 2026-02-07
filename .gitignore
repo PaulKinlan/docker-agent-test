@@ -2,6 +2,17 @@
 home/*
 !home/.gitkeep
 
+# Log directory contents (populated at runtime by journald, smtpd, etc.)
+log/*
+!log/.gitkeep
+!log/journal
+log/journal/*
+!log/journal/.gitkeep
+
+# Mail spool contents (populated at runtime by opensmtpd)
+mail/*
+!mail/.gitkeep
+
 # Logs
 *.log
 

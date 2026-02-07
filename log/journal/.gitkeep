@@ -1,0 +1,1 @@
+# Ensures journald uses persistent storage when /var/log/journal exists

@@ -69,6 +69,11 @@ COPY config/systemd/ /etc/systemd/system/
 COPY scripts/ /usr/local/bin/
 RUN chmod +x /usr/local/bin/*.sh
 
+# Configure journald for persistent storage so logs survive in /var/log/journal
+# (mounted to host via docker-compose for external observation)
+RUN mkdir -p /etc/systemd/journald.conf.d && \
+    printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/persistent.conf
+
 # Configure opensmtpd for local-only mail delivery
 RUN echo 'listen on localhost' > /etc/smtpd/smtpd.conf && \
     echo 'action "local" mbox alias <aliases>' >> /etc/smtpd/smtpd.conf && \

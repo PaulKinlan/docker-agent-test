@@ -8,6 +8,16 @@
 set -euo pipefail
 
 echo "agent-manager: Starting at $(date -Iseconds)"
+
+# Ensure /home/shared exists. The Docker volume mount (./home:/home) overwrites
+# the build-time directory, so we must re-create it at every boot.
+if [[ ! -d /home/shared ]]; then
+    mkdir -p /home/shared
+    chgrp agents /home/shared
+    chmod 2775 /home/shared
+    echo "agent-manager: Created /home/shared (mode 2775, group=agents)"
+fi
+
 echo "agent-manager: Reconciling agent services..."
 
 # Get all members of the 'agents' group

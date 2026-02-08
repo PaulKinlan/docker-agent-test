@@ -26,6 +26,12 @@ RUN pacman -Syu --noconfirm && \
 # No default user — users are created dynamically via create-agent.sh
 RUN groupadd -f agents
 
+# Create shared workspace for inter-agent file sharing (SwarmKit ArtifactStore)
+# Writable by all agents via group ownership, readable by root for observation
+RUN mkdir -p /home/shared && \
+    chown root:agents /home/shared && \
+    chmod 2775 /home/shared
+
 # Explicitly deny sudo access for all agent users
 RUN mkdir -p /etc/sudoers.d && \
     echo '%agents ALL=(ALL) !ALL' > /etc/sudoers.d/deny-agents && \
@@ -79,7 +85,9 @@ RUN mkdir -p /etc/systemd/journald.conf.d && \
 COPY config/smtpd/ /etc/smtpd/
 
 # Configure opensmtpd for local-only mail delivery
-RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on localhost\naction "local" mbox alias <aliases>\nmatch from local for local action "local"\n' > /etc/smtpd/smtpd.conf && \
+# Use explicit 127.0.0.1 instead of "localhost" to avoid IPv4/IPv6 race
+# conditions under Docker QEMU/Rosetta emulation.
+RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on 127.0.0.1 port 25\naction "local" mbox alias <aliases>\nmatch from local for local action "local"\n' > /etc/smtpd/smtpd.conf && \
     touch /etc/smtpd/aliases && \
     mkdir -p /var/spool/smtpd/{offline,purge,temporary,incoming,queue,corrupt} && \
     chmod 711 /var/spool/smtpd && \
@@ -87,7 +95,23 @@ RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on localhost\naction "
     chmod 770 /var/spool/smtpd/offline && \
     chown smtpq:root /var/spool/smtpd/{purge,temporary,incoming,queue,corrupt} && \
     chown root:smtpq /var/spool/smtpd/offline && \
-    mkdir -p /var/spool/mail && chmod 1777 /var/spool/mail
+    mkdir -p /var/spool/mail && chmod 0755 /var/spool/mail
+
+# Override smtpd.service: run in foreground via a wrapper script.
+# Direct exec of /usr/bin/smtpd from systemd fails with 0B memory / exit 255
+# under Docker + Rosetta (cgroup2 interaction). A shell wrapper avoids this.
+# Also remove Requires=network-online.target which we mask in Docker.
+RUN mkdir -p /etc/systemd/system/smtpd.service.d && \
+    printf '[Unit]\nRequires=\nAfter=basic.target\n\n[Service]\nType=simple\nExecStart=\nExecStart=/usr/local/bin/start-smtpd.sh\n' \
+    > /etc/systemd/system/smtpd.service.d/override.conf && \
+    printf '#!/bin/sh\nrm -f /var/run/smtpd.sock\nexec /usr/bin/smtpd -d -f /etc/smtpd/smtpd.conf\n' \
+    > /usr/local/bin/start-smtpd.sh && \
+    chmod +x /usr/local/bin/start-smtpd.sh
+
+# Configure s-nail to use the local sendmail binary (provided by opensmtpd).
+# Using mta=/usr/sbin/sendmail allows bare usernames (e.g., "mail alice")
+# which the smtp:// MTA mode rejects.
+RUN printf 'set sendwait\nset mta=/usr/sbin/sendmail\nset hostname=localhost\n' > /etc/mail.rc
 
 # Mask services that are unnecessary inside Docker and block the boot process.
 #
@@ -113,13 +137,18 @@ RUN systemctl mask systemd-networkd-wait-online.service && \
 # Enable boot-time services
 RUN systemctl enable api-keys-sync.service && \
     systemctl enable agent-manager.service && \
-    systemctl enable smtpd.service
+    systemctl enable smtpd.service && \
+    systemctl enable swarm-orchestrator.service
 
 # Systemd environment
 ENV container=docker
 
 # Expose /home so all agent home dirs are visible from the host
 VOLUME ["/home"]
+
+# Health check — verifies systemd boot complete and mail system running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD systemctl is-active basic.target && systemctl is-active smtpd.service
 
 # Systemd must run as root (PID 1)
 STOPSIGNAL SIGRTMIN+3

@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
+.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list
 
 help:
 	@echo "Container management:"
@@ -35,6 +35,19 @@ help:
 	@echo "  make snapshot-log                       - Show snapshot history"
 	@echo "  make snapshot-diff                      - Show changes since last snapshot"
 	@echo "  make snapshot-status                    - Summarize changes since last snapshot"
+	@echo ""
+	@echo "Swarm orchestration (container must be running):"
+	@echo "  make swarm-status                       - Show task board, health, costs, events"
+	@echo "  make swarm-stop                         - Stop all agents and orchestrator"
+	@echo "  make swarm-stop REASON=\"bug found\"       - Stop swarm with a reason"
+	@echo "  make health                             - Check agent heartbeat health"
+	@echo "  make task-add SUBJECT=\"Build engine\" OWNER=alice - Add a task to the board"
+	@echo "  make task-add SUBJECT=\"Build snake\" OWNER=bob BLOCKED_BY=task-abc123 - With dependency"
+	@echo "  make task-list                          - List all tasks on the board"
+	@echo "  make task-ready                         - List tasks ready to start"
+	@echo "  make task-update ID=task-abc123 STATUS=completed RESULT=\"Done\" - Update task status"
+	@echo "  make task-graph                         - Show task dependency graph"
+	@echo "  make artifact-list                      - List shared artifacts"
 	@echo ""
 	@echo "Interactive TUI:"
 	@echo "  make install-tui                        - Install TUI dependencies (first time)"
@@ -195,6 +208,50 @@ snapshot-diff:
 
 snapshot-status:
 	@./scripts/snapshot-agents.sh status
+
+# --- Swarm orchestration ---
+
+swarm-status: ## Show task board, agent health, costs, and recent events
+	docker-compose exec -T agent-host /usr/local/bin/swarm-status.sh
+
+swarm-stop: ## Stop all agents and the orchestrator
+	docker-compose exec -T agent-host /usr/local/bin/stop-swarm.sh $(if $(REASON),--reason "$(REASON)")
+
+health: ## Check agent heartbeat health
+	docker-compose exec -T agent-host /usr/local/bin/check-health.sh
+
+task-add: ## Add a task to the shared board
+ifndef SUBJECT
+	$(error SUBJECT is required. Usage: make task-add SUBJECT="Build engine" OWNER=alice [DESCRIPTION="text"] [BLOCKED_BY=task-id])
+endif
+ifndef OWNER
+	$(error OWNER is required. Usage: make task-add SUBJECT="Build engine" OWNER=alice)
+endif
+	docker-compose exec -T agent-host /usr/local/bin/task.sh add "$(SUBJECT)" --owner $(OWNER) \
+		$(if $(DESCRIPTION),--description "$(DESCRIPTION)") \
+		$(if $(BLOCKED_BY),--blocked-by $(BLOCKED_BY))
+
+task-list: ## List all tasks on the board
+	docker-compose exec -T agent-host /usr/local/bin/task.sh list $(if $(OWNER),--owner $(OWNER)) $(if $(STATUS),--status $(STATUS))
+
+task-ready: ## List tasks that are ready to start (blockers satisfied)
+	docker-compose exec -T agent-host /usr/local/bin/task.sh ready $(if $(OWNER),--owner $(OWNER))
+
+task-update: ## Update a task's status
+ifndef ID
+	$(error ID is required. Usage: make task-update ID=task-abc123 STATUS=completed [RESULT="summary"])
+endif
+ifndef STATUS
+	$(error STATUS is required. Usage: make task-update ID=task-abc123 STATUS=completed [RESULT="summary"])
+endif
+	docker-compose exec -T agent-host /usr/local/bin/task.sh update $(ID) --status $(STATUS) \
+		$(if $(RESULT),--result "$(RESULT)")
+
+task-graph: ## Show task dependency graph
+	docker-compose exec -T agent-host /usr/local/bin/task.sh graph
+
+artifact-list: ## List shared artifacts
+	docker-compose exec -T agent-host /usr/local/bin/artifact.sh list $(if $(PRODUCER),--producer $(PRODUCER))
 
 # --- Interactive TUI ---
 

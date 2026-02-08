@@ -132,7 +132,13 @@ if [[ -n "$PERSONA" ]]; then
         # Strip markdown: "- **Role**: Software Development Agent" -> "Software Development Agent"
         GECOS=$(echo "$ROLE_LINE" | sed 's/^- \*\*Role\*\*: *//')
     fi
-    GECOS="$GECOS (${PERSONA%.md})"
+    PURPOSE_LINE=$(grep -m1 '^\- \*\*Purpose\*\*:' "$PERSONA_FILE" 2>/dev/null || true)
+    if [[ -n "$PURPOSE_LINE" ]]; then
+        PURPOSE=$(echo "$PURPOSE_LINE" | sed 's/^- \*\*Purpose\*\*: *//')
+        GECOS="$GECOS (${PERSONA%.md}) - $PURPOSE"
+    else
+        GECOS="$GECOS (${PERSONA%.md})"
+    fi
 fi
 useradd -m -s /bin/bash -G agents -c "$GECOS" "$USERNAME"
 

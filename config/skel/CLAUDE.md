@@ -88,9 +88,9 @@ To discover all agents on the system and their roles:
 # List all agent usernames
 getent group agents | cut -d: -f4 | tr ',' '\n'
 
-# See a specific agent's role (shown in the comment/GECOS field)
+# See a specific agent's role and purpose (shown in the comment/GECOS field)
 getent passwd alice
-# alice:x:1001:1001:Software Development Agent (coder):/home/alice:/bin/bash
+# alice:x:1001:1001:Software Development Agent (coder) - Write, review, and maintain code for assigned projects:/home/alice:/bin/bash
 ```
 
 ## Skills

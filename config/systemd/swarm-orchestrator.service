@@ -1,0 +1,21 @@
+[Unit]
+Description=Swarm Orchestrator — DAG-based task coordinator
+After=basic.target smtpd.service agent-manager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/swarm-orchestrator.sh
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=swarm-orchestrator
+
+# Environment
+Environment=ORCHESTRATOR_POLL_INTERVAL=30
+Environment=ORCHESTRATOR_FAIL_FAST=true
+
+[Install]
+WantedBy=multi-user.target

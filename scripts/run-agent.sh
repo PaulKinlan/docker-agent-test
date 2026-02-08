@@ -11,6 +11,15 @@
 #
 # Runs autonomous work cycles using the Claude Agent SDK via agent-loop.mjs.
 # Each cycle checks mail, processes TODOs, and reports results.
+#
+# Exit code handling (from agent-loop.mjs):
+#   0 — Success (reset backoff)
+#   1 — Transient error (backoff, retry)
+#   2 — Fatal error (stop retrying, halt service)
+#   3 — Timeout (mild backoff, retry)
+#
+# Backoff: doubles sleep on consecutive transient failures, caps at max.
+# Circuit breaker: after N consecutive failures, stops and mails root.
 
 set -euo pipefail
 
@@ -93,20 +102,83 @@ fi
 # ──────────────────────────────────────────────
 
 # Cycle interval: time to sleep between work cycles (seconds)
-readonly CYCLE_INTERVAL="${AGENT_CYCLE_INTERVAL:-300}"
+readonly BASE_INTERVAL="${AGENT_CYCLE_INTERVAL:-300}"
+
+# Backoff configuration
+readonly BACKOFF_MAX="${AGENT_BACKOFF_MAX:-1800}"          # Max sleep: 30 minutes
+readonly CIRCUIT_BREAKER="${AGENT_CIRCUIT_BREAKER:-5}"      # Stop after N consecutive failures
 
 # Export variables needed by the Node.js agent-loop script
 export AGENT_USER
 export NODE_PATH="/usr/lib/node_modules"
 
-log "Agent running (cycle every ${CYCLE_INTERVAL}s)"
+log "Agent running (cycle every ${BASE_INTERVAL}s, backoff_max=${BACKOFF_MAX}s, circuit_breaker=${CIRCUIT_BREAKER})"
+
+consecutive_failures=0
+current_interval="$BASE_INTERVAL"
 
 while true; do
-    log "Starting work cycle"
-    if node /usr/local/bin/agent-loop.mjs 2>&1 | tee -a "$AGENT_LOG"; then
-        log "Work cycle completed successfully"
-    else
-        log "Work cycle failed (exit $?), will retry next cycle"
+    log "Starting work cycle (failures=$consecutive_failures, interval=${current_interval}s)"
+
+    exit_code=0
+    node /usr/local/bin/agent-loop.mjs 2>&1 | tee -a "$AGENT_LOG" || exit_code=$?
+
+    case "$exit_code" in
+        0)
+            # Success — reset backoff
+            log "Work cycle completed successfully"
+            consecutive_failures=0
+            current_interval="$BASE_INTERVAL"
+            ;;
+        1)
+            # Transient error — backoff and retry
+            ((consecutive_failures++)) || true
+            log "Work cycle failed (transient, exit=1, consecutive=$consecutive_failures)"
+
+            # Exponential backoff: double the interval, cap at max
+            current_interval=$(( current_interval * 2 ))
+            if (( current_interval > BACKOFF_MAX )); then
+                current_interval="$BACKOFF_MAX"
+            fi
+            log "Backoff: next interval=${current_interval}s"
+            ;;
+        2)
+            # Fatal error — stop the agent
+            log "FATAL: Work cycle returned exit=2 (unrecoverable). Stopping agent."
+            printf 'Agent %s has stopped due to a fatal error (exit code 2).\n\nThis usually means an invalid API key or misconfigured model.\nCheck logs: journalctl -u agent@%s.service\n\nThe agent service will not restart until the issue is fixed.\n' \
+                "$AGENT_USER" "$AGENT_USER" \
+                | mail -s "FATAL: Agent $AGENT_USER stopped" root 2>/dev/null || true
+            exit 2
+            ;;
+        3)
+            # Timeout — mild backoff
+            ((consecutive_failures++)) || true
+            log "Work cycle timed out (exit=3, consecutive=$consecutive_failures)"
+            # Add 50% to interval on timeout
+            current_interval=$(( current_interval + current_interval / 2 ))
+            if (( current_interval > BACKOFF_MAX )); then
+                current_interval="$BACKOFF_MAX"
+            fi
+            ;;
+        *)
+            # Unknown exit code — treat as transient
+            ((consecutive_failures++)) || true
+            log "Work cycle failed (unknown exit=$exit_code, consecutive=$consecutive_failures)"
+            current_interval=$(( current_interval * 2 ))
+            if (( current_interval > BACKOFF_MAX )); then
+                current_interval="$BACKOFF_MAX"
+            fi
+            ;;
+    esac
+
+    # Circuit breaker: stop after too many consecutive failures
+    if (( consecutive_failures >= CIRCUIT_BREAKER )); then
+        log "CIRCUIT BREAKER: $consecutive_failures consecutive failures. Stopping agent."
+        printf 'Agent %s has been stopped by the circuit breaker after %d consecutive failures.\n\nLast exit code: %d\nCheck logs: journalctl -u agent@%s.service\n\nTo restart: systemctl start agent@%s.service\n' \
+            "$AGENT_USER" "$consecutive_failures" "$exit_code" "$AGENT_USER" "$AGENT_USER" \
+            | mail -s "CIRCUIT BREAKER: Agent $AGENT_USER stopped" root 2>/dev/null || true
+        exit 1
     fi
-    sleep "$CYCLE_INTERVAL"
+
+    sleep "$current_interval"
 done

@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
+.PHONY: help build up down restart shell logs clean reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
 
 help:
 	@echo "Container management:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make shell                  - Open a root shell in the container"
 	@echo "  make logs                   - View container logs"
 	@echo "  make clean                  - Remove image and cleanup"
+	@echo "  make reset                  - Full reset: stop container, remove image, wipe all data"
 	@echo ""
 	@echo "Agent management (container must be running):"
 	@echo "  make create-agent NAME=foo              - Create agent with base persona"
@@ -62,6 +63,13 @@ logs:
 clean: down
 	docker rmi agent-host:latest || true
 	@echo "Note: home directory contents preserved in ./home/"
+
+reset: down ## Full reset: stop container, remove image, wipe home/log/mail
+	docker rmi agent-host:latest || true
+	sudo find ./home -mindepth 1 ! -name '.gitkeep' -delete
+	sudo find ./log -mindepth 1 ! -name '.gitkeep' -delete
+	sudo find ./mail -mindepth 1 ! -name '.gitkeep' -delete
+	@echo "Reset complete. All agent data, logs, and mail removed."
 
 # --- Agent management ---
 

@@ -59,6 +59,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── remove-agent.sh    # Remove an agent user
     ├── list-agents.sh     # List agents and their status
     ├── manage-api-keys.sh # Manage per-agent API keys
+    ├── soft-reset.sh      # Remove all agents, clear logs and mail
     ├── send-mail.sh       # Send mail to an agent user
     ├── snapshot-agents.sh # Snapshot agent state (host-only)
     ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)

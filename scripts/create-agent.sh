@@ -140,7 +140,18 @@ if [[ -n "$PERSONA" ]]; then
         GECOS="$GECOS (${PERSONA%.md})"
     fi
 fi
-useradd -m -s /bin/bash -G agents -c "$GECOS" "$USERNAME"
+# Create persona group if it doesn't exist, so users with the same persona
+# can be addressed collectively (e.g., mail to coder-all).
+GROUPS="agents"
+if [[ -n "$PERSONA" ]]; then
+    PERSONA_GROUP="${PERSONA%.md}"
+    if ! getent group "$PERSONA_GROUP" &>/dev/null; then
+        groupadd "$PERSONA_GROUP"
+        echo "  -> Created persona group: $PERSONA_GROUP"
+    fi
+    GROUPS="agents,$PERSONA_GROUP"
+fi
+useradd -m -s /bin/bash -G "$GROUPS" -c "$GECOS" "$USERNAME"
 
 # Lock down home directory so other agents cannot read it
 chmod 700 "/home/$USERNAME"

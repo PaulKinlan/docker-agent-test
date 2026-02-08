@@ -162,7 +162,18 @@ make mail TO=alice FROM=bob SUBJECT="Code Review" MSG="PR #42 is ready"
 
 ### Mail Aliases
 
-The system automatically maintains an `all` mail alias that delivers to every registered agent. The alias is updated whenever agents are created or removed.
+The system automatically maintains mail aliases that are updated whenever users are created or removed:
+
+- **`all`** — delivers to every registered user
+- **`<persona>-all`** — delivers to everyone with a given persona (e.g., `coder-all`, `manager-all`)
+
+```bash
+# Mail everyone
+make mail TO=all MSG="Team standup in 5 minutes"
+
+# Mail all coders
+make mail TO=coder-all MSG="Please review the new coding standards"
+```
 
 Custom aliases (e.g., `devs: alice, bob`) can be defined in `config/smtpd/aliases.static`. After editing, rebuild the image and run `make sync-aliases`.
 

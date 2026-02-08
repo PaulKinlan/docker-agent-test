@@ -48,7 +48,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 
 ## sync-aliases.sh
 
-Regenerates `/etc/smtpd/aliases` from the current `agents` group membership. Maintains the `all` group alias and merges in custom aliases from `/etc/smtpd/aliases.static`.
+Regenerates `/etc/smtpd/aliases` from the current group membership. Maintains the `all` group alias, per-persona aliases (e.g., `coder-all`, `manager-all`), and merges in custom aliases from `/etc/smtpd/aliases.static`.
 
 **Usage:**
 ```bash
@@ -63,16 +63,19 @@ make sync-aliases
 
 **What it does:**
 1. Reads all members of the `agents` group
-2. Generates the `all` group alias (delivers to every agent)
-3. Merges in custom aliases from `/etc/smtpd/aliases.static` (if present)
-4. Writes the combined result to `/etc/smtpd/aliases`
+2. Generates the `all` group alias (delivers to everyone)
+3. Generates per-persona aliases (`<persona>-all`) for each persona that has members
+4. Merges in custom aliases from `/etc/smtpd/aliases.static` (if present)
+5. Writes the combined result to `/etc/smtpd/aliases`
 
 Called automatically by `create-agent.sh`, `remove-agent.sh`, `agent-manager.sh`, and `soft-reset.sh`. Can also be run manually via `make sync-aliases`.
 
 **Example:**
 ```bash
-# After creating agents alice and bob, /etc/smtpd/aliases contains:
+# After creating alice (coder) and bob (manager), /etc/smtpd/aliases contains:
 # all: alice, bob
+# coder-all: alice
+# manager-all: bob
 make sync-aliases
 ```
 
@@ -98,9 +101,9 @@ make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
 
 **What it does:**
 1. Validates the username format
-2. Creates a Linux user with home directory populated from `/etc/skel`. The GECOS field is set to the persona's role (e.g., `Software Development Agent (coder)`) so other agents can discover it via `getent passwd`
-3. Adds the user to the `agents` group
-4. Regenerates mail aliases (adds the new agent to the `all` group alias)
+2. Creates a Linux user with home directory populated from `/etc/skel`. The GECOS field is set to the persona's role (e.g., `Software Developer (coder)`) so others can discover it via `getent passwd`
+3. Adds the user to the `agents` group and the persona group (e.g., `coder`), creating the persona group if needed
+4. Regenerates mail aliases (adds the user to the `all` and `<persona>-all` aliases)
 5. Builds `agents.md` from base persona + optional specialist persona
 6. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
 7. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
@@ -180,7 +183,8 @@ make remove-agent NAME=<username>
 1. Stops and disables the `agent@<username>.service`
 2. Removes the Linux user account
 3. Removes the home directory (unless `--keep-home` is specified)
-4. Regenerates mail aliases (removes the agent from the `all` group alias)
+4. Removes empty persona groups (e.g., if the last coder is removed, the `coder` group is deleted)
+5. Regenerates mail aliases (removes the user from `all` and `<persona>-all` aliases)
 
 **Example:**
 ```bash

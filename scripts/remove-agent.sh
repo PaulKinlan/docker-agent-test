@@ -57,7 +57,17 @@ else
     echo "  -> No active service found (skipping)"
 fi
 
-# 2. Remove the user
+# 2. Find persona groups the user belongs to (excluding agents and their primary group)
+#    so we can clean up empty groups after removal.
+PERSONA_GROUPS=""
+USER_GROUPS=$(id -Gn "$USERNAME" 2>/dev/null || true)
+PRIMARY_GROUP=$(id -gn "$USERNAME" 2>/dev/null || true)
+for GRP in $USER_GROUPS; do
+    [[ "$GRP" == "agents" || "$GRP" == "$PRIMARY_GROUP" ]] && continue
+    PERSONA_GROUPS="$PERSONA_GROUPS $GRP"
+done
+
+# 3. Remove the user
 if [[ "$KEEP_HOME" == true ]]; then
     userdel "$USERNAME"
     echo "  -> User removed (home directory preserved at /home/$USERNAME)"
@@ -66,7 +76,16 @@ else
     echo "  -> User and home directory removed"
 fi
 
-# Regenerate mail aliases (removes agent from the 'all' group alias)
+# 4. Clean up empty persona groups
+for GRP in $PERSONA_GROUPS; do
+    MEMBERS=$(getent group "$GRP" 2>/dev/null | cut -d: -f4)
+    if [[ -z "$MEMBERS" ]]; then
+        groupdel "$GRP" 2>/dev/null || true
+        echo "  -> Removed empty persona group: $GRP"
+    fi
+done
+
+# Regenerate mail aliases (removes user from 'all' and persona aliases)
 /usr/local/bin/sync-aliases.sh
 
 echo "Agent '$USERNAME' has been removed."

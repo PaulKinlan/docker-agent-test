@@ -178,6 +178,16 @@ export default function App() {
           case "read-mail":
             appendLines(getReadMailLines(args[0]));
             break;
+          case "reset":
+            appendLine(
+              "  Full reset requires sudo and cannot run inside the TUI.",
+              "info"
+            );
+            appendLine(
+              "  Run instead: make reset",
+              "info"
+            );
+            break;
           case "status": {
             const s = getContainerStatus();
             setContainerStatus(s);

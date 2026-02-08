@@ -6,17 +6,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..", "..");
 
 const COMMAND_NAMES = [
-  "build", "up", "down", "restart", "status",
-  "list", "create", "remove", "update", "logs", "shell", "personas",
-  "set-key", "get-keys", "remove-key",
-  "mail", "read-mail",
-  "snapshot", "snapshot-log", "snapshot-diff",
+  "build", "up", "down", "restart", "container-logs", "clean", "reset", "status",
+  "list", "create", "remove", "update", "logs", "shell", "personas", "soft-reset",
+  "set-key", "get-keys", "remove-key", "clear-keys", "providers",
+  "mail", "read-mail", "sync-aliases",
+  "snapshot-init", "snapshot", "snapshot-log", "snapshot-diff", "snapshot-status",
   "help", "clear", "exit", "quit",
 ];
 
 const AGENT_NAME_COMMANDS = new Set([
   "remove", "update", "logs", "shell",
-  "set-key", "get-keys", "remove-key",
+  "set-key", "get-keys", "remove-key", "clear-keys",
   "mail", "read-mail",
 ]);
 

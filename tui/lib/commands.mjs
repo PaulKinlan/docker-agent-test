@@ -10,8 +10,9 @@ const PROJECT_ROOT = resolve(__dirname, "..", "..");
 // Commands that require a running container
 const NEEDS_CONTAINER = new Set([
   "list", "create", "remove", "update", "logs", "shell",
-  "set-key", "get-keys", "remove-key",
-  "mail",
+  "set-key", "get-keys", "remove-key", "clear-keys", "providers",
+  "mail", "sync-aliases",
+  "soft-reset",
 ]);
 
 const COMMANDS = {
@@ -36,6 +37,21 @@ const COMMANDS = {
     category: "Container",
     sequence: ["down", "up"],
   },
+  "container-logs": {
+    description: "View container logs",
+    category: "Container",
+    toSpawn: () => ({ cmd: "docker-compose", args: ["logs", "-f", "--timestamps"] }),
+  },
+  clean: {
+    description: "Stop container, remove image",
+    category: "Container",
+    toSpawn: () => ({ cmd: "make", args: ["clean"] }),
+  },
+  reset: {
+    description: "Full reset: stop container, remove image, wipe all data",
+    category: "Container",
+    builtin: true,
+  },
   status: {
     description: "Show container and agent status",
     category: "Container",
@@ -50,7 +66,7 @@ const COMMANDS = {
   },
   create: {
     description: "Create a new agent",
-    usage: "create <name> [--persona <name>] [--api-key <PROVIDER=key>]",
+    usage: "create <name> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER=key>]",
     category: "Agents",
     minArgs: 1,
     toSpawn: (args) => ({ cmd: "./scripts/create-agent.sh", args }),
@@ -91,6 +107,11 @@ const COMMANDS = {
     category: "Agents",
     builtin: true,
   },
+  "soft-reset": {
+    description: "Remove all agents, clear logs and mail",
+    category: "Agents",
+    toSpawn: () => ({ cmd: "./scripts/soft-reset.sh", args: ["--yes"] }),
+  },
 
   // --- API Keys ---
   "set-key": {
@@ -123,10 +144,28 @@ const COMMANDS = {
       args: ["remove", args[0], args[1]],
     }),
   },
+  "clear-keys": {
+    description: "Remove all API keys from an agent",
+    usage: "clear-keys <name>",
+    category: "API Keys",
+    minArgs: 1,
+    toSpawn: (args) => ({
+      cmd: "./scripts/manage-api-keys.sh",
+      args: ["clear", args[0]],
+    }),
+  },
+  providers: {
+    description: "List known API key provider names",
+    category: "API Keys",
+    toSpawn: () => ({
+      cmd: "./scripts/manage-api-keys.sh",
+      args: ["list-providers"],
+    }),
+  },
 
   // --- Mail ---
   mail: {
-    description: "Send mail to an agent",
+    description: "Send mail to an agent or alias",
     usage: 'mail <to> "<message>" [--from <name>] [--subject "<text>"]',
     category: "Mail",
     minArgs: 2,
@@ -166,8 +205,18 @@ const COMMANDS = {
     minArgs: 1,
     builtin: true,
   },
+  "sync-aliases": {
+    description: "Regenerate mail aliases",
+    category: "Mail",
+    toSpawn: () => ({ cmd: "./scripts/sync-aliases.sh", args: [] }),
+  },
 
   // --- Snapshots ---
+  "snapshot-init": {
+    description: "Initialize the snapshot repository",
+    category: "Snapshots",
+    toSpawn: () => ({ cmd: "./scripts/snapshot-agents.sh", args: ["init"] }),
+  },
   snapshot: {
     description: "Take a snapshot of agent state",
     usage: 'snapshot ["message"]',
@@ -186,6 +235,11 @@ const COMMANDS = {
     description: "Show changes since last snapshot",
     category: "Snapshots",
     toSpawn: () => ({ cmd: "./scripts/snapshot-agents.sh", args: ["diff"] }),
+  },
+  "snapshot-status": {
+    description: "Summarize changes since last snapshot",
+    category: "Snapshots",
+    toSpawn: () => ({ cmd: "./scripts/snapshot-agents.sh", args: ["status"] }),
   },
 
   // --- Meta ---

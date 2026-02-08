@@ -30,7 +30,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `create-agent.sh` | Create a new agent user | `create-agent.sh <username> [--persona <name>] [--api-key <KEY>=<val>]` |
+| `create-agent.sh` | Create a new agent user | `create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <KEY>=<val>]` |
 | `update-agent.sh` | Update an agent's persona | `update-agent.sh <username> --persona <name>` |
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
@@ -83,20 +83,21 @@ make sync-aliases
 
 ## create-agent.sh
 
-Creates a new agent user with a home directory, `.claude/` configuration, optional persona, optional API keys, and a running systemd service.
+Creates a new agent user with a home directory, `.claude/` configuration, optional persona, optional custom instructions, optional API keys, and a running systemd service.
 
 **Usage:**
 ```bash
 # Inside the container
-create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]...
+create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]...
 
 # From the host via Make
-make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
+make create-agent NAME=<username> [PERSONA=<name>] [INSTRUCTIONS="text"] [API_KEY=<PROVIDER>=<key>]
 ```
 
 **Arguments:**
 - `<username>` (required) — Must start with a lowercase letter or underscore, contain only `[a-z0-9_-]`, and be at most 32 characters.
 - `--persona <name>` (optional) — Apply a specialist persona (e.g., `coder`, `researcher`).
+- `--instructions <text>` (optional) — Custom instructions appended to the agent's `agents.md` under a "Custom Instructions" section.
 - `--api-key <PROVIDER>=<key>` (optional) — Set an API key for this agent. Can be repeated for multiple keys.
 
 **What it does:**
@@ -104,7 +105,7 @@ make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
 2. Creates a Linux user with home directory populated from `/etc/skel`. The GECOS field is set to the persona's role (e.g., `Software Developer (coder)`) so others can discover it via `getent passwd`
 3. Adds the user to the `agents` group and the persona group (e.g., `coder`), creating the persona group if needed
 4. Regenerates mail aliases (adds the user to the `all` and `<persona>-all` aliases)
-5. Builds `agents.md` from base persona + optional specialist persona
+5. Builds `agents.md` from base persona + optional specialist persona + optional custom instructions
 6. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
 7. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
 8. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
@@ -121,8 +122,11 @@ make create-agent NAME=alice PERSONA=coder
 # Create agent with API key
 make create-agent NAME=bob API_KEY=ANTHROPIC_API_KEY=sk-ant-xxx
 
+# Create agent with custom instructions
+make create-agent NAME=carol PERSONA=coder INSTRUCTIONS="Focus on Python backend code"
+
 # Create agent with persona and API key (inside container)
-create-agent.sh carol --persona researcher --api-key OPENAI_API_KEY=sk-xxx
+create-agent.sh dave --persona researcher --api-key OPENAI_API_KEY=sk-xxx
 ```
 
 ---
@@ -520,6 +524,7 @@ The `Makefile` in the project root provides convenience wrappers (the container 
 ```bash
 make create-agent NAME=foo                        # Create agent with base persona
 make create-agent NAME=foo PERSONA=coder          # Create agent with specialist persona
+make create-agent NAME=foo INSTRUCTIONS="Focus on tests"     # Create with custom instructions
 make create-agent NAME=foo API_KEY=ANTHROPIC_API_KEY=sk-xxx  # Create with API key
 make update-agent NAME=foo PERSONA=coder          # Update an agent's persona
 make remove-agent NAME=foo                        # Remove an agent

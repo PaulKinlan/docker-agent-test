@@ -30,7 +30,7 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 │   └── systemd/                # Systemd service files
 └── scripts/
     ├── README.md               # Scripts documentation
-    ├── create-agent.sh         # Create agent user (with optional --persona, --api-key)
+    ├── create-agent.sh         # Create agent user (with optional --persona, --instructions, --api-key)
     ├── update-agent.sh         # Update agent persona at runtime
     ├── remove-agent.sh         # Remove agent user
     ├── list-agents.sh          # List agents and status
@@ -50,7 +50,8 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 | What changed | Update these docs |
 |---|---|
 | Any script in `scripts/` | `scripts/README.md` — update usage, arguments, behavior, and examples |
-| Makefile targets | `scripts/README.md` (Makefile Targets section) and `README.md` (Agent Management Scripts section) |
+| Makefile targets | `scripts/README.md` (Makefile Targets section), `README.md` (Agent Management Scripts section), and `tui/lib/commands.mjs` + `tui/lib/completions.mjs` (TUI must mirror Make targets) |
+| TUI commands (`tui/lib/`) | Makefile (help text) and `README.md` (Interactive TUI section) — every TUI command should have a Make equivalent and vice versa |
 | Files in `config/` | `config/README.md` and `README.md` (Directory Structure and Customizing Configuration sections) |
 | Persona files in `config/personas/` | `config/README.md` and `README.md` |
 | API key configuration in `config/api-keys/` | `config/README.md` and `README.md` (API Key Management section) |
@@ -59,6 +60,13 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 | Changes to the build or run process | `README.md` (Usage section) and `USAGE.md` |
 | Security model changes | `README.md` (Notes section) |
 | This file (CLAUDE.md) | No additional docs needed |
+
+### Make and TUI parity
+
+Every Makefile target (except `tui`, `install-tui`, and `help`) must have a corresponding TUI command in `tui/lib/commands.mjs`. When adding a new Makefile target, also add the TUI command and update `tui/lib/completions.mjs`. The naming convention is:
+- Makefile uses `kebab-case` with `NAME=` variables (e.g., `make create-agent NAME=alice PERSONA=coder`)
+- TUI uses shorter `kebab-case` with positional arguments (e.g., `create alice --persona coder`)
+- Commands that require `sudo` or interactive input should be `builtin: true` in the TUI with a hint to use `make` instead
 
 ### Documentation standards
 

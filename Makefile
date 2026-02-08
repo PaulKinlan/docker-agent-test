@@ -15,6 +15,7 @@ help:
 	@echo "Agent management (container must be running):"
 	@echo "  make create-agent NAME=foo              - Create agent with base persona"
 	@echo "  make create-agent NAME=foo PERSONA=coder - Create agent with specialist persona"
+	@echo "  make create-agent NAME=foo INSTRUCTIONS=\"Focus on tests\" - Create with custom instructions"
 	@echo "  make create-agent NAME=foo API_KEY=ANTHROPIC_API_KEY=sk-xxx - Create with API key"
 	@echo "  make update-agent NAME=foo PERSONA=coder - Update agent's persona"
 	@echo "  make remove-agent NAME=foo              - Remove an agent user"
@@ -81,10 +82,11 @@ reset: down ## Full reset: stop container, remove image, wipe home/log/mail
 
 create-agent:
 ifndef NAME
-	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder] [API_KEY=PROVIDER=key])
+	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder] [INSTRUCTIONS="text"] [API_KEY=PROVIDER=key])
 endif
 	docker-compose exec -T agent-host /usr/local/bin/create-agent.sh $(NAME) \
 		$(if $(PERSONA),--persona $(PERSONA)) \
+		$(if $(INSTRUCTIONS),--instructions "$(INSTRUCTIONS)") \
 		$(if $(API_KEY),--api-key $(API_KEY))
 
 remove-agent:

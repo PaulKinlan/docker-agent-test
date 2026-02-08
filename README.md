@@ -253,15 +253,26 @@ make tui           # or: node cli.mjs
 |---------|-------------|
 | `build` | Build the Docker image |
 | `up` / `down` / `restart` | Container lifecycle |
+| `container-logs` | View container logs |
+| `clean` | Stop container, remove image |
+| `reset` | Full reset (hint — requires `make reset`) |
 | `status` | Show container status |
 | `list` | List agents and their status |
 | `create alice --persona coder` | Create a new agent |
+| `create alice --instructions "Focus on tests"` | Create with custom instructions |
 | `remove alice` | Remove an agent |
 | `logs alice` | Stream agent logs (Ctrl+C to stop) |
-| `mail alice "Hello"` | Send mail to an agent |
-| `read-mail alice` | Read an agent's mailbox |
+| `soft-reset` | Remove all agents, clear logs and mail |
+| `personas` | List available personas |
 | `set-key alice ANTHROPIC_API_KEY=sk-xxx` | Set API key |
+| `clear-keys alice` | Remove all API keys from an agent |
+| `providers` | List known API key provider names |
+| `mail alice "Hello"` | Send mail to an agent or alias |
+| `read-mail alice` | Read an agent's mailbox |
+| `sync-aliases` | Regenerate mail aliases |
+| `snapshot-init` | Initialize the snapshot repository |
 | `snapshot "my note"` | Take a state snapshot |
+| `snapshot-log` / `snapshot-diff` / `snapshot-status` | Snapshot history and changes |
 | `help` | Show all commands |
 
 Tab completion is available for commands, agent names, and persona names. Use up/down arrows to navigate command history.

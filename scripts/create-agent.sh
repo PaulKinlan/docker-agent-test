@@ -1,19 +1,20 @@
 #!/bin/bash
 # create-agent.sh — Create a new agent user with optional persona and API keys
 #
-# Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]...
+# Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]...
 #
 # This script:
 #   1. Creates a Linux user (home dir populated from /etc/skel)
 #   2. Adds the user to the 'agents' group
-#   3. Builds the agent's agents.md from base persona + optional specialist persona
+#   3. Builds the agent's agents.md from base persona + optional specialist persona + custom instructions
 #   4. Creates an agent-writable .claude/ directory (with skills/ subdirectory)
 #      and a root-owned read-only config.json inside it
 #   5. Configures per-agent API keys if provided
 #   6. Enables and starts the agent@<username> systemd service
 #
 # Options:
-#   --persona <name>        Apply a specialist persona (e.g., coder, researcher)
+#   --persona <name>            Apply a specialist persona (e.g., coder, researcher)
+#   --instructions <text>       Custom instructions appended to the agent's agents.md
 #   --api-key <PROVIDER>=<key>  Set an API key for this agent (can be repeated)
 #
 # Persona resolution:
@@ -22,9 +23,10 @@
 #     is appended after the base persona
 #   - Without --persona, the agent gets only the base persona
 #
-# API key examples:
+# Examples:
 #   create-agent.sh alice --api-key ANTHROPIC_API_KEY=sk-ant-xxx
 #   create-agent.sh bob --persona coder --api-key OPENAI_API_KEY=sk-xxx
+#   create-agent.sh carol --persona coder --instructions "Focus on Python backend code"
 
 set -euo pipefail
 
@@ -41,6 +43,7 @@ PERSONAS_DIR="/etc/agent-personas"
 # --- Parse arguments ---
 USERNAME=""
 PERSONA=""
+INSTRUCTIONS=""
 API_KEYS=()
 
 while [[ $# -gt 0 ]]; do
@@ -48,16 +51,25 @@ while [[ $# -gt 0 ]]; do
         --persona)
             if [[ -z "${2:-}" ]]; then
                 echo "Error: --persona requires a value." >&2
-                echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]..." >&2
                 exit 1
             fi
             PERSONA="$2"
             shift 2
             ;;
+        --instructions)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --instructions requires a value." >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]..." >&2
+                exit 1
+            fi
+            INSTRUCTIONS="$2"
+            shift 2
+            ;;
         --api-key)
             if [[ -z "${2:-}" ]]; then
                 echo "Error: --api-key requires a value in PROVIDER=key format." >&2
-                echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]..." >&2
                 exit 1
             fi
             if [[ ! "$2" =~ ^[A-Z_][A-Z0-9_]*=.+$ ]]; then
@@ -69,7 +81,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         -*)
             echo "Error: Unknown option '$1'." >&2
-            echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
+            echo "Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]..." >&2
             exit 1
             ;;
         *)
@@ -77,7 +89,7 @@ while [[ $# -gt 0 ]]; do
                 USERNAME="$1"
             else
                 echo "Error: Unexpected argument '$1'." >&2
-                echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
+                echo "Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]..." >&2
                 exit 1
             fi
             shift
@@ -86,7 +98,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$USERNAME" ]]; then
-    echo "Usage: create-agent.sh <username> [--persona <name>] [--api-key <PROVIDER>=<key>]..." >&2
+    echo "Usage: create-agent.sh <username> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER>=<key>]..." >&2
     exit 1
 fi
 
@@ -180,6 +192,16 @@ AGENTS_MD="/home/$USERNAME/agents.md"
         echo ""
         cat "$PERSONA_FILE"
     fi
+
+    # Append custom instructions if provided
+    if [[ -n "$INSTRUCTIONS" ]]; then
+        echo ""
+        echo "---"
+        echo ""
+        echo "## Custom Instructions"
+        echo ""
+        echo "$INSTRUCTIONS"
+    fi
 } > "$AGENTS_MD"
 
 chown "$USERNAME:$USERNAME" "$AGENTS_MD"
@@ -189,6 +211,10 @@ if [[ -n "$PERSONA" ]]; then
     echo "  -> Persona: base + ${PERSONA%.md}"
 else
     echo "  -> Persona: base (default)"
+fi
+
+if [[ -n "$INSTRUCTIONS" ]]; then
+    echo "  -> Custom instructions appended to agents.md"
 fi
 
 # 3. Create .claude/ directory owned by the agent user

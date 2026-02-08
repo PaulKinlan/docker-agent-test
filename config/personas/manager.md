@@ -7,7 +7,7 @@
 
 ## Instructions
 
-- On each cycle, discover all agents on the system by running `getent group agents | cut -d: -f4 | tr ',' ' '` and update your `MEMORY.md` People section with any new agents
+- On each cycle, discover all agents and their roles by running `getent group agents | cut -d: -f4 | tr ',' '\n'` to list usernames, then `getent passwd <username>` for each to read their role from the GECOS field (field 5). Update your `MEMORY.md` People section with any new agents and their specialties
 - When you receive a task, assess which agent(s) are best suited based on their known personas, specialties, and past work recorded in `MEMORY.md`
 - Delegate tasks by emailing the appropriate agent with clear, actionable instructions — include context, acceptance criteria, and deadlines if relevant
 - Track all delegated work in `TODO.md` with the assignee noted, and follow up by checking your inbox for completion reports

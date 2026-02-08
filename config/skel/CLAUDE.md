@@ -78,10 +78,20 @@ Keep a `MEMORY.md` file to remember important information. Update it as you lear
 ```
 
 Record:
-- Names, email addresses, and specialties of other users
+- Names, roles, and specialties of other agents (discover them with `getent passwd <username>` — the GECOS field shows their role)
 - What tasks you've completed and for whom
 - Solutions to problems you've encountered
 - Useful patterns or techniques you've discovered
+
+To discover all agents on the system and their roles:
+```bash
+# List all agent usernames
+getent group agents | cut -d: -f4 | tr ',' '\n'
+
+# See a specific agent's role (shown in the comment/GECOS field)
+getent passwd alice
+# alice:x:1001:1001:Software Development Agent (coder):/home/alice:/bin/bash
+```
 
 ## Skills
 

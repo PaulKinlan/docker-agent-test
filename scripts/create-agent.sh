@@ -122,7 +122,19 @@ fi
 echo "Creating agent user: $USERNAME"
 
 # 1. Create user with home directory (populated from /etc/skel)
-useradd -m -s /bin/bash -G agents "$USERNAME"
+# Extract the role description from the persona file for the GECOS field,
+# so other agents can discover this user's role via getent passwd.
+GECOS="Agent"
+if [[ -n "$PERSONA" ]]; then
+    PERSONA_FILE="${PERSONAS_DIR}/${PERSONA%.md}.md"
+    ROLE_LINE=$(grep -m1 '^\- \*\*Role\*\*:' "$PERSONA_FILE" 2>/dev/null || true)
+    if [[ -n "$ROLE_LINE" ]]; then
+        # Strip markdown: "- **Role**: Software Development Agent" -> "Software Development Agent"
+        GECOS=$(echo "$ROLE_LINE" | sed 's/^- \*\*Role\*\*: *//')
+    fi
+    GECOS="$GECOS (${PERSONA%.md})"
+fi
+useradd -m -s /bin/bash -G agents -c "$GECOS" "$USERNAME"
 
 # Lock down home directory so other agents cannot read it
 chmod 700 "/home/$USERNAME"

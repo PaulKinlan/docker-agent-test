@@ -98,7 +98,7 @@ make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
 
 **What it does:**
 1. Validates the username format
-2. Creates a Linux user with home directory populated from `/etc/skel`
+2. Creates a Linux user with home directory populated from `/etc/skel`. The GECOS field is set to the persona's role (e.g., `Software Development Agent (coder)`) so other agents can discover it via `getent passwd`
 3. Adds the user to the `agents` group
 4. Regenerates mail aliases (adds the new agent to the `all` group alias)
 5. Builds `agents.md` from base persona + optional specialist persona

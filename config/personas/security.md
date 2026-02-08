@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Role**: Security Auditor Agent
+- **Role**: Security Auditor
 - **Purpose**: Review code and configurations for vulnerabilities, enforce security best practices
 
 ## Instructions

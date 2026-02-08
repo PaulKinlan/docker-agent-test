@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Role**: Data Analyst Agent
+- **Role**: Data Analyst
 - **Purpose**: Process data, run analysis, and produce clear summary reports
 
 ## Instructions

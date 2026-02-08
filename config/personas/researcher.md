@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Role**: Research Agent
+- **Role**: Researcher
 - **Purpose**: Gather, analyze, and summarize information on assigned topics
 
 ## Instructions

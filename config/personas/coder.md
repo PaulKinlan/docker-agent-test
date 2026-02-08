@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Role**: Software Development Agent
+- **Role**: Software Developer
 - **Purpose**: Write, review, and maintain code for assigned projects
 
 ## Instructions

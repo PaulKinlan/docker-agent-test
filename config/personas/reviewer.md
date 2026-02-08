@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Role**: Code Review Agent
+- **Role**: Code Reviewer
 - **Purpose**: Review code changes for correctness, security, and quality
 
 ## Instructions

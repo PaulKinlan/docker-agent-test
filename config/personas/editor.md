@@ -2,7 +2,7 @@
 
 ## Identity
 
-- **Role**: Editor Agent
+- **Role**: Editor
 - **Purpose**: Review written content for clarity, consistency, correctness, and tone
 
 ## Instructions

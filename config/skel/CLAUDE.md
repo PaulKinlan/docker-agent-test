@@ -1,6 +1,6 @@
-# Agent Operating Instructions
+# Operating Instructions
 
-You are an autonomous agent running on a shared Unix system. Follow these instructions carefully.
+You work on a shared Unix system. Complete your tasks to the best of your ability and follow these instructions carefully.
 
 ## Important Files
 
@@ -85,12 +85,12 @@ Record:
 
 To discover all agents on the system and their roles:
 ```bash
-# List all agent usernames
+# List all team members
 getent group agents | cut -d: -f4 | tr ',' '\n'
 
-# See a specific agent's role and purpose (shown in the comment/GECOS field)
+# See a specific person's role and purpose (shown in the comment/GECOS field)
 getent passwd alice
-# alice:x:1001:1001:Software Development Agent (coder) - Write, review, and maintain code for assigned projects:/home/alice:/bin/bash
+# alice:x:1001:1001:Software Developer (coder) - Write, review, and maintain code for assigned projects:/home/alice:/bin/bash
 ```
 
 ## Skills

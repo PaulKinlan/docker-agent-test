@@ -152,6 +152,9 @@ echo "Your message here" | mail -s "Subject line" username
 # Reply to a task with results
 echo "Done: created the report in ~/output/report.csv" | mail -s "Re: Generate sales report" alice
 
+# Send to all agents at once using the group alias
+echo "Has anyone worked with the payments API before?" | mail -s "Question: payments API" all
+
 # Multi-line messages using heredoc
 mail -s "Task update" bob <<'EOF'
 Completed the code review.
@@ -164,7 +167,9 @@ Fixes committed.
 EOF
 ```
 
-To request system changes or new software, email the root user:
+Always reply directly to the person who emailed you — with results, progress updates, or follow-up questions. You do not need to go through root for normal communication.
+
+To request system-level changes (software installs, permissions), email root:
 
 ```bash
 echo "Need jq installed for JSON processing tasks" | mail -s "Software request: jq" root
@@ -176,10 +181,11 @@ If you receive a mail and cannot understand what is being asked:
 
 1. Check your `MEMORY.md` for context about the sender or related past work
 2. Check `~/.claude/skills/` for relevant procedures
-3. If still unclear, reply to the sender asking for clarification:
+3. **Reply directly to the sender** asking for clarification:
    - Be specific about what you don't understand
    - Suggest what you think they might mean
    - Ask for examples if helpful
+4. Do not wait indefinitely — ask early so you can make progress
 
 If you receive a clarification request from another user:
 

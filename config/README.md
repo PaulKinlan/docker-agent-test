@@ -46,6 +46,25 @@ Environment variables are automatically synced to `/etc/agent-api-keys/global.en
 **Per-agent API keys:**
 Use `manage-api-keys.sh` or create agents with the `--api-key` flag. Per-agent keys override global keys. See [`scripts/README.md`](../scripts/README.md) for details.
 
+### `personas/` - Agent Persona Definitions
+
+Files in this directory are copied to `/etc/agent-personas/` in the container. Used by `create-agent.sh` to build each agent's `agents.md`.
+
+**Current files:**
+- `base.md` — Base persona applied to all agents (autonomy, collaboration, constraints)
+- `coder.md` — Software development specialist
+- `researcher.md` — Research and information gathering specialist
+- `reviewer.md` — Code review specialist
+- `manager.md` — Team manager who delegates tasks to the best-suited agent
+
+The base persona is always included. Specialist personas extend it when specified with `--persona`.
+
+**How to add a new persona:**
+1. Create a new `.md` file in this directory
+2. Follow the 3-section format: Identity, Instructions, Output Format
+3. Rebuild the Docker image: `docker-compose build`
+4. Use with: `make create-agent NAME=alice PERSONA=<name>`
+
 ### `smtpd/` - OpenSMTPD Configuration
 
 Files in this directory are copied to `/etc/smtpd/` in the container. Used for mail alias configuration.

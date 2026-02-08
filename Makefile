@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
+.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
 
 help:
 	@echo "Container management:"
@@ -23,7 +23,9 @@ help:
 	@echo "  make agent-logs NAME=foo                - Tail logs for an agent"
 	@echo "  make agent-shell NAME=foo               - Open a shell as an agent user"
 	@echo "  make mail TO=alice MSG=\"Hello\"           - Send mail to an agent (from root)"
+	@echo "  make mail TO=all MSG=\"Hi everyone\"      - Send mail to all agents (group alias)"
 	@echo "  make mail TO=alice FROM=bob MSG=\"Hi\"     - Send mail as a specific user"
+	@echo "  make sync-aliases                       - Regenerate mail aliases"
 	@echo ""
 	@echo "Snapshots (run on host, container not required):"
 	@echo "  make snapshot-init                      - Initialize the snapshot repository"
@@ -128,7 +130,10 @@ ifndef NAME
 endif
 	docker-compose exec --user $(NAME) agent-host /bin/bash
 
-mail: ## Send mail to an agent
+sync-aliases: ## Regenerate mail aliases from agents group
+	docker-compose exec -T agent-host /usr/local/bin/sync-aliases.sh
+
+mail: ## Send mail to an agent or alias
 ifndef TO
 	$(error TO is required. Usage: make mail TO=alice MSG="Hello" [FROM=bob] [SUBJECT="Hi"])
 endif

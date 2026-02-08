@@ -66,4 +66,7 @@ else
     echo "  -> User and home directory removed"
 fi
 
+# Regenerate mail aliases (removes agent from the 'all' group alias)
+/usr/local/bin/sync-aliases.sh
+
 echo "Agent '$USERNAME' has been removed."

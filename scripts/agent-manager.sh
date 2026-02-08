@@ -52,5 +52,8 @@ for USERNAME in $AGENTS_MEMBERS; do
     fi
 done
 
+# Regenerate mail aliases to ensure they match current agent membership
+/usr/local/bin/sync-aliases.sh
+
 echo "agent-manager: Done. Started=$STARTED Failed=$FAILED"
 echo "agent-manager: Finished at $(date -Iseconds)"

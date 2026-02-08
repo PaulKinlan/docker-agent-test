@@ -54,6 +54,9 @@ else
     echo "No agent users found."
 fi
 
+# --- Regenerate aliases (clears the 'all' group alias) ---
+/usr/local/bin/sync-aliases.sh
+
 # --- Clear journal logs ---
 echo "Clearing systemd journal..."
 journalctl --rotate --vacuum-time=1s 2>/dev/null || true

@@ -32,6 +32,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── api-keys/          # API key configuration (copied to /etc/agent-api-keys)
 │   │   ├── global.env.template  # Template for global API keys
 │   │   └── .gitignore           # Prevents committing actual keys
+│   ├── smtpd/             # OpenSMTPD configuration (copied to /etc/smtpd)
+│   │   └── aliases.static       # Custom per-agent mail aliases
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
 │   │   ├── .bashrc        # Default bash configuration
 │   │   ├── .bash_profile  # Default bash login configuration
@@ -60,7 +62,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── list-agents.sh     # List agents and their status
     ├── manage-api-keys.sh # Manage per-agent API keys
     ├── soft-reset.sh      # Remove all agents, clear logs and mail
-    ├── send-mail.sh       # Send mail to an agent user
+    ├── send-mail.sh       # Send mail to an agent user or alias
+    ├── sync-aliases.sh    # Regenerate mail aliases from agents group
     ├── snapshot-agents.sh # Snapshot agent state (host-only)
     ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
@@ -142,16 +145,30 @@ Tails the systemd journal for the specified agent.
 make agent-shell NAME=alice
 ```
 
-**Send mail to an agent:**
+**Send mail to an agent or group:**
 ```bash
 # Send from root (default)
 make mail TO=alice MSG="Please check the build logs"
+
+# Send to all agents at once (group alias)
+make mail TO=all MSG="Team standup in 5 minutes"
 
 # Send from another agent
 make mail TO=alice FROM=bob MSG="Can you review my PR?"
 
 # With a custom subject
 make mail TO=alice FROM=bob SUBJECT="Code Review" MSG="PR #42 is ready"
+```
+
+### Mail Aliases
+
+The system automatically maintains an `all` mail alias that delivers to every registered agent. The alias is updated whenever agents are created or removed.
+
+Custom aliases (e.g., `devs: alice, bob`) can be defined in `config/smtpd/aliases.static`. After editing, rebuild the image and run `make sync-aliases`.
+
+To manually regenerate aliases:
+```bash
+make sync-aliases
 ```
 
 ### API Key Management

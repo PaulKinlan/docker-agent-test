@@ -1,0 +1,15 @@
+# Custom email aliases for the agent system
+#
+# This file is merged into /etc/smtpd/aliases by sync-aliases.sh.
+# The 'all' group alias is generated automatically — do not define it here.
+#
+# Format: alias: recipient1, recipient2, ...
+#
+# Examples:
+#   devs: alice, bob           # Mail to 'devs' delivers to alice and bob
+#   lead: alice                # Mail to 'lead' delivers to alice
+#   review: bob, carol         # Mail to 'review' delivers to bob and carol
+#
+# After editing, rebuild the Docker image (make build) and run:
+#   make sync-aliases
+# to regenerate the aliases file inside the container.

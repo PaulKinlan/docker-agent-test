@@ -88,10 +88,13 @@ if [[ -z "$MESSAGE" ]]; then
     exit 1
 fi
 
-# Validate recipient exists
+# Validate recipient exists (as a user or a mail alias)
 if ! id "$RECIPIENT" &>/dev/null; then
-    echo "Error: Recipient '$RECIPIENT' does not exist." >&2
-    exit 1
+    # Check if it's a known mail alias
+    if ! grep -q "^${RECIPIENT}:" /etc/smtpd/aliases 2>/dev/null; then
+        echo "Error: Recipient '$RECIPIENT' is not a user or a known mail alias." >&2
+        exit 1
+    fi
 fi
 
 # Validate sender exists (if specified)

@@ -128,6 +128,9 @@ useradd -m -s /bin/bash -G agents "$USERNAME"
 chmod 700 "/home/$USERNAME"
 echo "  -> User created with home at /home/$USERNAME (mode 700)"
 
+# Regenerate mail aliases (adds new agent to the 'all' group alias)
+/usr/local/bin/sync-aliases.sh
+
 # 2. Build agents.md from base persona + optional specialist persona
 AGENTS_MD="/home/$USERNAME/agents.md"
 {

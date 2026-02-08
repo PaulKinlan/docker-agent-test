@@ -36,12 +36,45 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
 | `soft-reset.sh` | Remove all agents, clear logs and mail | `soft-reset.sh [--yes]` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
-| `send-mail.sh` | Send mail to an agent | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
+| `send-mail.sh` | Send mail to an agent or alias | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
+| `sync-aliases.sh` | Regenerate mail aliases | `sync-aliases.sh` |
 | `snapshot-agents.sh` | Snapshot agent state (host-only) | `snapshot-agents.sh <command> [args]` |
 | `agent-loop.mjs` | Single agentic work cycle (Agent SDK) | Automatic — called by `run-agent.sh` |
 | `run-agent.sh` | Agent entrypoint (run by systemd) | Automatic — not run manually |
 | `agent-manager.sh` | Boot-time service reconciliation | Automatic — runs at container start |
 | `sync-api-keys.sh` | Sync env vars to global API keys | Automatic — runs at container start |
+
+---
+
+## sync-aliases.sh
+
+Regenerates `/etc/smtpd/aliases` from the current `agents` group membership. Maintains the `all` group alias and merges in custom aliases from `/etc/smtpd/aliases.static`.
+
+**Usage:**
+```bash
+# Inside the container
+sync-aliases.sh
+
+# From the host via Make
+make sync-aliases
+```
+
+**Arguments:** None.
+
+**What it does:**
+1. Reads all members of the `agents` group
+2. Generates the `all` group alias (delivers to every agent)
+3. Merges in custom aliases from `/etc/smtpd/aliases.static` (if present)
+4. Writes the combined result to `/etc/smtpd/aliases`
+
+Called automatically by `create-agent.sh`, `remove-agent.sh`, `agent-manager.sh`, and `soft-reset.sh`. Can also be run manually via `make sync-aliases`.
+
+**Example:**
+```bash
+# After creating agents alice and bob, /etc/smtpd/aliases contains:
+# all: alice, bob
+make sync-aliases
+```
 
 ---
 
@@ -67,11 +100,12 @@ make create-agent NAME=<username> [PERSONA=<name>] [API_KEY=<PROVIDER>=<key>]
 1. Validates the username format
 2. Creates a Linux user with home directory populated from `/etc/skel`
 3. Adds the user to the `agents` group
-4. Builds `agents.md` from base persona + optional specialist persona
-5. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
-6. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
-7. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
-8. Reloads systemd to pick up the new instance, then enables and starts the `agent@<username>.service` unit (blocks until active or reports failure with diagnostic output including recent journal entries)
+4. Regenerates mail aliases (adds the new agent to the `all` group alias)
+5. Builds `agents.md` from base persona + optional specialist persona
+6. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
+7. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
+8. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
+9. Reloads systemd to pick up the new instance, then enables and starts the `agent@<username>.service` unit (blocks until active or reports failure with diagnostic output including recent journal entries)
 
 **Examples:**
 ```bash
@@ -146,6 +180,7 @@ make remove-agent NAME=<username>
 1. Stops and disables the `agent@<username>.service`
 2. Removes the Linux user account
 3. Removes the home directory (unless `--keep-home` is specified)
+4. Regenerates mail aliases (removes the agent from the `all` group alias)
 
 **Example:**
 ```bash
@@ -201,8 +236,9 @@ make soft-reset
 **What it does:**
 1. Enumerates all users in the `agents` group
 2. Removes each agent (stops service, deletes user and home directory) via `remove-agent.sh`
-3. Rotates and vacuums the systemd journal
-4. Deletes all files in `/var/spool/mail/`
+3. Regenerates mail aliases (clears the `all` group alias)
+4. Rotates and vacuums the systemd journal
+5. Deletes all files in `/var/spool/mail/`
 
 **Examples:**
 ```bash
@@ -220,7 +256,7 @@ soft-reset.sh --yes
 
 ## send-mail.sh
 
-Sends a local mail message to an agent user. By default, mail is sent from root. Use `--from` to send as a specific user — the command runs as that user.
+Sends a local mail message to an agent user or mail alias. By default, mail is sent from root. Use `--from` to send as a specific user — the command runs as that user.
 
 **Usage:**
 ```bash
@@ -232,13 +268,13 @@ make mail TO=<recipient> MSG="<message>" [FROM=<user>] [SUBJECT="<text>"]
 ```
 
 **Arguments:**
-- `<recipient>` (required) — The agent user to send mail to. Must be an existing user.
+- `<recipient>` (required) — The agent user or mail alias to send to. Must be an existing user or a known alias (e.g., `all`).
 - `--from <user>` (optional) — Send mail as this user instead of root. The command logs in as the specified user to send the mail.
 - `--subject <text>` (optional) — Set the mail subject line. Defaults to "Message".
 - `-- <message>` (required) — The message body. Use `--` to separate the message from options, or pass it as the last argument.
 
 **What it does:**
-1. Validates the recipient user exists
+1. Validates the recipient exists as a user or a known mail alias
 2. Validates the sender user exists (if `--from` is specified)
 3. Sends the message using the local mail system (s-nail via opensmtpd)
 4. If `--from` is specified, runs the mail command as that user via `runuser`
@@ -249,6 +285,9 @@ make mail TO=<recipient> MSG="<message>" [FROM=<user>] [SUBJECT="<text>"]
 # Send mail to alice from root
 make mail TO=alice MSG="Please check the build logs"
 
+# Send mail to all agents (group alias)
+make mail TO=all MSG="Team standup in 5 minutes"
+
 # Send mail to alice from bob
 make mail TO=alice FROM=bob MSG="Hey, can you review my PR?"
 
@@ -257,6 +296,7 @@ make mail TO=alice FROM=bob SUBJECT="Code Review" MSG="PR #42 is ready for revie
 
 # Inside the container
 send-mail.sh alice -- "Hello from root"
+send-mail.sh all -- "Broadcast to everyone"
 send-mail.sh alice --from bob --subject "Update" -- "Task complete"
 ```
 
@@ -394,7 +434,8 @@ This script is **not intended to be run manually**.
 1. Enumerates all users in the `agents` group
 2. For each user, verifies the account and home directory still exist
 3. Enables and queues start for the corresponding `agent@<username>.service` (non-blocking)
-4. Reports a summary of started vs. failed agents
+4. Regenerates mail aliases to match current agent membership
+5. Reports a summary of started vs. failed agents
 
 ---
 
@@ -483,8 +524,10 @@ make list-personas                                # List available personas
 make agent-logs NAME=foo                          # Tail systemd journal logs
 make agent-shell NAME=foo                         # Open a shell as the agent user
 make mail TO=alice MSG="Hello"                    # Send mail to agent (from root)
+make mail TO=all MSG="Hi everyone"                # Send mail to all agents (group alias)
 make mail TO=alice FROM=bob MSG="Hi"              # Send mail as a specific user
 make mail TO=alice FROM=bob SUBJECT="Re: Task" MSG="Done"  # With subject
+make sync-aliases                                 # Regenerate mail aliases
 make soft-reset                                  # Remove all agents, clear logs and mail
 ```
 

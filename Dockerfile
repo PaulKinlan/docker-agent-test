@@ -75,8 +75,12 @@ RUN chmod +x /usr/local/bin/*.sh /usr/local/bin/*.mjs
 RUN mkdir -p /etc/systemd/journald.conf.d && \
     printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/persistent.conf
 
+# Copy custom smtpd configuration (aliases.static for custom per-agent aliases)
+COPY config/smtpd/ /etc/smtpd/
+
 # Configure opensmtpd for local-only mail delivery
 RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on localhost\naction "local" mbox alias <aliases>\nmatch from local for local action "local"\n' > /etc/smtpd/smtpd.conf && \
+    touch /etc/smtpd/aliases && \
     mkdir -p /var/spool/smtpd/{offline,purge,temporary,incoming,queue,corrupt} && \
     chmod 711 /var/spool/smtpd && \
     chmod 700 /var/spool/smtpd/{purge,temporary,incoming,queue,corrupt} && \

@@ -11,6 +11,9 @@ const COMMAND_NAMES = [
   "set-key", "get-keys", "remove-key", "clear-keys", "providers",
   "mail", "read-mail", "sync-aliases",
   "snapshot-init", "snapshot", "snapshot-log", "snapshot-diff", "snapshot-status",
+  "swarm-status", "swarm-stop", "health",
+  "task-add", "task-list", "task-ready", "task-update", "task-graph",
+  "artifact-list",
   "help", "clear", "exit", "quit",
 ];
 

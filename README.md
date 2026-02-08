@@ -273,6 +273,15 @@ make tui           # or: node cli.mjs
 | `snapshot-init` | Initialize the snapshot repository |
 | `snapshot "my note"` | Take a state snapshot |
 | `snapshot-log` / `snapshot-diff` / `snapshot-status` | Snapshot history and changes |
+| `swarm-status` | Show task board, health, costs, and events |
+| `swarm-stop` / `swarm-stop --reason "bug"` | Stop all agents and orchestrator |
+| `health` | Check agent heartbeat health |
+| `task-add "Build engine" alice` | Add a task to the shared board |
+| `task-list` / `task-list --owner alice` | List tasks (optionally filtered) |
+| `task-ready` | List tasks ready to start |
+| `task-update task-abc completed` | Update a task's status |
+| `task-graph` | Show task dependency graph |
+| `artifact-list` | List shared artifacts |
 | `help` | Show all commands |
 
 Tab completion is available for commands, agent names, and persona names. Use up/down arrows to navigate command history.

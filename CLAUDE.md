@@ -144,7 +144,8 @@ There are no automated tests. Verify changes manually by building the image and 
 
 - `base.md` is applied to all agents. Keep it generic.
 - Specialist personas extend, not replace, the base persona.
-- Each persona should define: role, core instructions, and output conventions.
+- Each persona **must** include `- **Role**: ...` and `- **Purpose**: ...` lines under an `## Identity` section. These are extracted by `create-agent.sh` and written to the GECOS field in `/etc/passwd`, which is how other agents discover each other's capabilities.
+- Each persona should also define: core instructions and output conventions.
 
 ## Common Patterns
 
@@ -159,7 +160,7 @@ There are no automated tests. Verify changes manually by building the image and 
 ### Adding a new persona
 
 1. Create a new `.md` file in `config/personas/`.
-2. Follow the format of existing personas (role heading, instructions list, output conventions).
+2. Follow the 3-section format: `## Identity` (with `- **Role**: ...` and `- **Purpose**: ...`), `## Instructions`, `## Output Format`. The Role and Purpose lines are required — `create-agent.sh` extracts them for the GECOS field.
 3. Update `config/README.md` to list the new persona.
 4. No script changes needed — `create-agent.sh` picks up personas by filename.
 

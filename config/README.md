@@ -52,10 +52,19 @@ Files in this directory are copied to `/etc/agent-personas/` in the container. U
 
 **Current files:**
 - `base.md` — Base persona applied to all agents (autonomy, collaboration, constraints)
-- `coder.md` — Software development specialist
-- `researcher.md` — Research and information gathering specialist
-- `reviewer.md` — Code review specialist
-- `manager.md` — Team manager who delegates tasks to the best-suited agent
+- `analyst.md` — Data analysis and reporting
+- `architect.md` — System design and technical RFCs
+- `coder.md` — Software development
+- `devops.md` — Build scripts, CI/CD, and infrastructure automation
+- `editor.md` — Content review for clarity, consistency, and tone
+- `manager.md` — Team coordination and task delegation
+- `ops.md` — Request triage and routing to specialists
+- `planner.md` — Goal-to-spec breakdown with acceptance criteria
+- `qa.md` — Testing, edge cases, and bug reporting
+- `researcher.md` — Research and information gathering
+- `reviewer.md` — Code review
+- `security.md` — Security audits and vulnerability review
+- `writer.md` — Technical documentation and content
 
 The base persona is always included. Specialist personas extend it when specified with `--persona`.
 

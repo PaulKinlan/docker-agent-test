@@ -51,6 +51,8 @@ services:
       # Azure OpenAI
       - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      # Z.ai
+      - ZAI_API_KEY=${ZAI_API_KEY:-}
       # Agent loop configuration
       - AGENT_CYCLE_INTERVAL=${AGENT_CYCLE_INTERVAL:-}
       - AGENT_MODEL=${AGENT_MODEL:-}

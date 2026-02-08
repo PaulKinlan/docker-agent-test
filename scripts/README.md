@@ -34,6 +34,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `update-agent.sh` | Update an agent's persona | `update-agent.sh <username> --persona <name>` |
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
+| `soft-reset.sh` | Remove all agents, clear logs and mail | `soft-reset.sh [--yes]` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
 | `send-mail.sh` | Send mail to an agent | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
 | `snapshot-agents.sh` | Snapshot agent state (host-only) | `snapshot-agents.sh <command> [args]` |
@@ -177,6 +178,42 @@ USER                 SERVICE      ACTIVE     HOME
 ----                 -------      ------     ----
 alice                agent@alice.service active     /home/alice (yes)
 bob                  agent@bob.service   inactive   /home/bob (yes)
+```
+
+---
+
+## soft-reset.sh
+
+Removes all agent users, clears systemd journal logs, and empties the mail spool. The container stays running and is ready for new agents immediately afterward.
+
+**Usage:**
+```bash
+# Inside the container
+soft-reset.sh [--yes]
+
+# From the host via Make
+make soft-reset
+```
+
+**Arguments:**
+- `--yes` / `-y` (optional) — Skip the confirmation prompt. Used by the Makefile target.
+
+**What it does:**
+1. Enumerates all users in the `agents` group
+2. Removes each agent (stops service, deletes user and home directory) via `remove-agent.sh`
+3. Rotates and vacuums the systemd journal
+4. Deletes all files in `/var/spool/mail/`
+
+**Examples:**
+```bash
+# From the host (no confirmation prompt)
+make soft-reset
+
+# Inside the container (interactive confirmation)
+soft-reset.sh
+
+# Inside the container (skip confirmation)
+soft-reset.sh --yes
 ```
 
 ---
@@ -448,6 +485,7 @@ make agent-shell NAME=foo                         # Open a shell as the agent us
 make mail TO=alice MSG="Hello"                    # Send mail to agent (from root)
 make mail TO=alice FROM=bob MSG="Hi"              # Send mail as a specific user
 make mail TO=alice FROM=bob SUBJECT="Re: Task" MSG="Done"  # With subject
+make soft-reset                                  # Remove all agents, clear logs and mail
 ```
 
 **API Key Management:**

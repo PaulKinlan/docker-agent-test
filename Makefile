@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
+.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui
 
 help:
 	@echo "Container management:"
@@ -10,6 +10,7 @@ help:
 	@echo "  make logs                   - View container logs"
 	@echo "  make clean                  - Remove image and cleanup"
 	@echo "  make reset                  - Full reset: stop container, remove image, wipe all data"
+	@echo "  make soft-reset             - Remove all agents, clear logs and mail (container stays running)"
 	@echo ""
 	@echo "Agent management (container must be running):"
 	@echo "  make create-agent NAME=foo              - Create agent with base persona"
@@ -63,6 +64,9 @@ logs:
 clean: down
 	docker rmi agent-host:latest || true
 	@echo "Note: home directory contents preserved in ./home/"
+
+soft-reset: ## Remove all agents, clear logs and mail (container stays running)
+	docker-compose exec -T agent-host /usr/local/bin/soft-reset.sh --yes
 
 reset: down ## Full reset: stop container, remove image, wipe home/log/mail
 	docker rmi agent-host:latest || true

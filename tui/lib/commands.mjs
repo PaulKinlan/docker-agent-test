@@ -15,7 +15,7 @@ const NEEDS_CONTAINER = new Set([
   "soft-reset",
   "swarm-status", "swarm-stop", "health",
   "task-add", "task-list", "task-ready", "task-update", "task-graph",
-  "artifact-list",
+  "artifact-list", "artifact-register", "artifact-get",
 ]);
 
 const COMMANDS = {
@@ -248,8 +248,9 @@ const COMMANDS = {
   // --- Swarm ---
   "swarm-status": {
     description: "Show task board, health, costs, and events",
+    usage: "swarm-status [--tasks] [--costs] [--events] [--json]",
     category: "Swarm",
-    toSpawn: () => ({ cmd: "./scripts/swarm-status.sh", args: [] }),
+    toSpawn: (args) => ({ cmd: "./scripts/swarm-status.sh", args }),
   },
   "swarm-stop": {
     description: "Stop all agents and the orchestrator",
@@ -259,30 +260,19 @@ const COMMANDS = {
   },
   health: {
     description: "Check agent heartbeat health",
+    usage: "health [--stale-after <seconds>] [--json]",
     category: "Swarm",
-    toSpawn: () => ({ cmd: "./scripts/check-health.sh", args: [] }),
+    toSpawn: (args) => ({ cmd: "./scripts/check-health.sh", args }),
   },
   "task-add": {
     description: "Add a task to the shared board",
-    usage: 'task-add "<subject>" <owner> [--description "<text>"] [--blocked-by <task-id>]',
+    usage: 'task-add "<subject>" <owner> [--description "<text>"] [--blocked-by <task-id,...>]',
     category: "Swarm",
     minArgs: 2,
     toSpawn: (args) => {
       const subject = args[0];
       const owner = args[1];
-      const spawnArgs = ["add", subject, "--owner", owner];
-      let i = 2;
-      while (i < args.length) {
-        if (args[i] === "--description" && args[i + 1]) {
-          spawnArgs.push("--description", args[i + 1]);
-          i += 2;
-        } else if (args[i] === "--blocked-by" && args[i + 1]) {
-          spawnArgs.push("--blocked-by", args[i + 1]);
-          i += 2;
-        } else {
-          i++;
-        }
-      }
+      const spawnArgs = ["add", subject, "--owner", owner, ...args.slice(2)];
       return { cmd: "./scripts/task.sh", args: spawnArgs };
     },
   },
@@ -306,16 +296,7 @@ const COMMANDS = {
     toSpawn: (args) => {
       const id = args[0];
       const status = args[1];
-      const spawnArgs = ["update", id, "--status", status];
-      let i = 2;
-      while (i < args.length) {
-        if (args[i] === "--result" && args[i + 1]) {
-          spawnArgs.push("--result", args[i + 1]);
-          i += 2;
-        } else {
-          i++;
-        }
-      }
+      const spawnArgs = ["update", id, "--status", status, ...args.slice(2)];
       return { cmd: "./scripts/task.sh", args: spawnArgs };
     },
   },
@@ -329,6 +310,20 @@ const COMMANDS = {
     usage: "artifact-list [--producer <name>]",
     category: "Swarm",
     toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["list", ...args] }),
+  },
+  "artifact-register": {
+    description: "Register a shared artifact",
+    usage: 'artifact-register <path> [--description "<text>"]',
+    category: "Swarm",
+    minArgs: 1,
+    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["register", ...args] }),
+  },
+  "artifact-get": {
+    description: "Get metadata for an artifact",
+    usage: "artifact-get <path>",
+    category: "Swarm",
+    minArgs: 1,
+    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["get", ...args] }),
   },
 
   // --- Meta ---

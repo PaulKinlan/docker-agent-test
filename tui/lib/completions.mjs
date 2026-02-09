@@ -13,7 +13,7 @@ const COMMAND_NAMES = [
   "snapshot-init", "snapshot", "snapshot-log", "snapshot-diff", "snapshot-status",
   "swarm-status", "swarm-stop", "health",
   "task-add", "task-list", "task-ready", "task-update", "task-graph",
-  "artifact-list",
+  "artifact-list", "artifact-register", "artifact-get",
   "help", "clear", "exit", "quit",
 ];
 

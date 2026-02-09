@@ -48,6 +48,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │       ├── agent@.service          # Per-agent service template
 │       ├── agent-manager.service   # Boot-time reconciliation service
 │       └── api-keys-sync.service   # Boot-time API key sync service
+├── shared/                # Shared artifacts directory (mounted as /home/shared)
 ├── tui/                   # Interactive TUI (Node.js + Ink, host-side only)
 │   ├── package.json       # Dependencies (ink, react)
 │   ├── cli.mjs            # Entry point
@@ -273,6 +274,17 @@ make tui           # or: node cli.mjs
 | `snapshot-init` | Initialize the snapshot repository |
 | `snapshot "my note"` | Take a state snapshot |
 | `snapshot-log` / `snapshot-diff` / `snapshot-status` | Snapshot history and changes |
+| `swarm-status` | Show task board, health, costs, and events |
+| `swarm-stop` / `swarm-stop --reason "bug"` | Stop all agents and orchestrator |
+| `health` | Check agent heartbeat health |
+| `task-add "Build engine" alice` | Add a task to the shared board |
+| `task-list` / `task-list --owner alice` | List tasks (optionally filtered) |
+| `task-ready` | List tasks ready to start |
+| `task-update task-abc completed` | Update a task's status |
+| `task-graph` | Show task dependency graph |
+| `artifact-list` | List shared artifacts |
+| `artifact-register reports/out.csv` | Register a shared artifact |
+| `artifact-get reports/out.csv` | Get metadata for an artifact |
 | `help` | Show all commands |
 
 Tab completion is available for commands, agent names, and persona names. Use up/down arrows to navigate command history.
@@ -323,6 +335,7 @@ Several container directories are mounted to the host so you can observe agent a
 | `./log` | `/var/log` | System logs — journald, smtpd, and other service logs |
 | `./log/journal` | `/var/log/journal` | Systemd journal (binary) — all agent service stdout/stderr |
 | `./mail` | `/var/spool/mail` | Mail spool — one mbox file per agent for inter-agent messages |
+| `./shared` | `/home/shared` | Shared artifacts — files registered via `artifact.sh` for inter-agent sharing |
 
 **Reading agent service logs from the host:**
 ```bash

@@ -1,0 +1,2 @@
+# Shared artifacts directory — mounted as /home/shared in the container.
+# Agents register artifacts here via artifact.sh; visible on the host.

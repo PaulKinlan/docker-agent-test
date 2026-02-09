@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list
+.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list artifact-register artifact-get
 
 help:
 	@echo "Container management:"
@@ -48,6 +48,8 @@ help:
 	@echo "  make task-update ID=task-abc123 STATUS=completed RESULT=\"Done\" - Update task status"
 	@echo "  make task-graph                         - Show task dependency graph"
 	@echo "  make artifact-list                      - List shared artifacts"
+	@echo "  make artifact-register FILE=reports/out.csv DESCRIPTION=\"Q4 report\" - Register an artifact"
+	@echo "  make artifact-get FILE=reports/out.csv   - Get metadata for an artifact"
 	@echo ""
 	@echo "Interactive TUI:"
 	@echo "  make install-tui                        - Install TUI dependencies (first time)"
@@ -252,6 +254,19 @@ task-graph: ## Show task dependency graph
 
 artifact-list: ## List shared artifacts
 	docker-compose exec -T agent-host /usr/local/bin/artifact.sh list $(if $(PRODUCER),--producer $(PRODUCER))
+
+artifact-register: ## Register a shared artifact
+ifndef FILE
+	$(error FILE is required. Usage: make artifact-register FILE=reports/out.csv [DESCRIPTION="Q4 report"])
+endif
+	docker-compose exec -T agent-host /usr/local/bin/artifact.sh register $(FILE) \
+		$(if $(DESCRIPTION),--description "$(DESCRIPTION)")
+
+artifact-get: ## Get metadata for an artifact
+ifndef FILE
+	$(error FILE is required. Usage: make artifact-get FILE=reports/out.csv)
+endif
+	docker-compose exec -T agent-host /usr/local/bin/artifact.sh get $(FILE)
 
 # --- Interactive TUI ---
 

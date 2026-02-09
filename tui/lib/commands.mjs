@@ -13,6 +13,9 @@ const NEEDS_CONTAINER = new Set([
   "set-key", "get-keys", "remove-key", "clear-keys", "providers",
   "mail", "sync-aliases",
   "soft-reset",
+  "swarm-status", "swarm-stop", "health",
+  "task-add", "task-list", "task-ready", "task-update", "task-graph",
+  "artifact-list", "artifact-register", "artifact-get",
 ]);
 
 const COMMANDS = {
@@ -240,6 +243,87 @@ const COMMANDS = {
     description: "Summarize changes since last snapshot",
     category: "Snapshots",
     toSpawn: () => ({ cmd: "./scripts/snapshot-agents.sh", args: ["status"] }),
+  },
+
+  // --- Swarm ---
+  "swarm-status": {
+    description: "Show task board, health, costs, and events",
+    usage: "swarm-status [--tasks] [--costs] [--events] [--json]",
+    category: "Swarm",
+    toSpawn: (args) => ({ cmd: "./scripts/swarm-status.sh", args }),
+  },
+  "swarm-stop": {
+    description: "Stop all agents and the orchestrator",
+    usage: 'swarm-stop [--reason "<text>"]',
+    category: "Swarm",
+    toSpawn: (args) => ({ cmd: "./scripts/stop-swarm.sh", args }),
+  },
+  health: {
+    description: "Check agent heartbeat health",
+    usage: "health [--stale-after <seconds>] [--json]",
+    category: "Swarm",
+    toSpawn: (args) => ({ cmd: "./scripts/check-health.sh", args }),
+  },
+  "task-add": {
+    description: "Add a task to the shared board",
+    usage: 'task-add "<subject>" <owner> [--description "<text>"] [--blocked-by <task-id,...>]',
+    category: "Swarm",
+    minArgs: 2,
+    toSpawn: (args) => {
+      const subject = args[0];
+      const owner = args[1];
+      const spawnArgs = ["add", subject, "--owner", owner, ...args.slice(2)];
+      return { cmd: "./scripts/task.sh", args: spawnArgs };
+    },
+  },
+  "task-list": {
+    description: "List all tasks on the board",
+    usage: "task-list [--owner <name>] [--status <status>]",
+    category: "Swarm",
+    toSpawn: (args) => ({ cmd: "./scripts/task.sh", args: ["list", ...args] }),
+  },
+  "task-ready": {
+    description: "List tasks ready to start (blockers satisfied)",
+    usage: "task-ready [--owner <name>]",
+    category: "Swarm",
+    toSpawn: (args) => ({ cmd: "./scripts/task.sh", args: ["ready", ...args] }),
+  },
+  "task-update": {
+    description: "Update a task's status",
+    usage: 'task-update <id> <status> [--result "<text>"]',
+    category: "Swarm",
+    minArgs: 2,
+    toSpawn: (args) => {
+      const id = args[0];
+      const status = args[1];
+      const spawnArgs = ["update", id, "--status", status, ...args.slice(2)];
+      return { cmd: "./scripts/task.sh", args: spawnArgs };
+    },
+  },
+  "task-graph": {
+    description: "Show task dependency graph",
+    category: "Swarm",
+    toSpawn: () => ({ cmd: "./scripts/task.sh", args: ["graph"] }),
+  },
+  "artifact-list": {
+    description: "List shared artifacts",
+    usage: "artifact-list [--producer <name>]",
+    category: "Swarm",
+    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["list", ...args] }),
+  },
+  "artifact-register": {
+    description: "Register a shared artifact",
+    usage: 'artifact-register <path> [--description "<text>"]',
+    category: "Swarm",
+    minArgs: 1,
+    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["register", ...args] }),
+  },
+  "artifact-get": {
+    description: "Get metadata for an artifact",
+    usage: "artifact-get <path>",
+    category: "Swarm",
+    minArgs: 1,
+    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["get", ...args] }),
   },
 
   // --- Meta ---

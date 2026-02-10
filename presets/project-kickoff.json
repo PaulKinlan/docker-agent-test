@@ -1,0 +1,56 @@
+{
+  "name": "project-kickoff",
+  "description": "New project bootstrap with architecture, scaffolding, CI/CD, tests, and documentation",
+
+  "agents": [
+    { "name": "arch", "persona": "architect" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "ops", "persona": "devops" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "design",
+      "subject": "Design project architecture: ${PROJECT_NAME:-project}",
+      "owner": "arch",
+      "description": "Design the architecture for ${PROJECT_NAME:-project}: ${PROJECT_DESCRIPTION:-A new project}. Project type: ${PROJECT_TYPE:-nodejs}. Write a comprehensive project design document to /home/shared/project-design.md containing: (1) technology stack selection with rationale (language, framework, database, caching, etc.), (2) directory structure with purpose of each top-level directory, (3) key components and their responsibilities, (4) data flow and component interactions, (5) dependency list with versions, (6) configuration management strategy (env vars, config files), (7) error handling and logging approach, (8) testing strategy (unit, integration, e2e), (9) deployment target recommendations, (10) coding conventions and style guide to follow. Register /home/shared/project-design.md as an artifact."
+    },
+    {
+      "id": "scaffold",
+      "subject": "Scaffold project structure",
+      "owner": "dev",
+      "description": "Read /home/shared/project-design.md for the architecture and tech stack decisions. Create the complete project scaffold at /home/shared/project/: (1) create the directory structure as specified in the design, (2) initialize package manager files (package.json, requirements.txt, go.mod, etc.) with specified dependencies, (3) create entry point files with basic boilerplate, (4) set up configuration files (.env.example, config templates), (5) create .gitignore with appropriate patterns, (6) add linting and formatting configuration (ESLint, Prettier, Black, etc.), (7) create Makefile or task runner with common commands (build, test, lint, run), (8) add placeholder modules for each key component from the design. Write a scaffold summary to /home/shared/scaffold-summary.md listing all files created and their purpose. Register /home/shared/scaffold-summary.md as an artifact.",
+      "blocked_by": ["design"]
+    },
+    {
+      "id": "ci-setup",
+      "subject": "Set up CI/CD and Docker",
+      "owner": "ops",
+      "description": "Read /home/shared/project-design.md for the tech stack and deployment strategy. Set up CI/CD and containerization for the project at /home/shared/project/: (1) create a GitHub Actions workflow at /home/shared/project/.github/workflows/ci.yml with steps for linting, testing, and building, (2) create /home/shared/project/Dockerfile with a multi-stage build (builder + runtime), (3) create /home/shared/project/.dockerignore, (4) create /home/shared/project/docker-compose.yml if the project needs supporting services (database, cache, etc.), (5) add health check endpoint configuration, (6) set up environment variable management for different stages (dev, staging, prod). Write a DevOps setup summary to /home/shared/devops-summary.md documenting the pipeline stages and how to use them. Register /home/shared/devops-summary.md as an artifact.",
+      "blocked_by": ["design"]
+    },
+    {
+      "id": "tests",
+      "subject": "Write initial test suite",
+      "owner": "dev",
+      "description": "Read /home/shared/project-design.md for testing strategy and /home/shared/scaffold-summary.md for project structure. Create an initial test suite at /home/shared/project/tests/ (or the testing directory appropriate for the project type): (1) set up test framework configuration, (2) write example unit tests for core modules demonstrating testing patterns, (3) write example integration tests showing how to test component interactions, (4) add test fixtures and helper utilities, (5) create a test data directory with sample data, (6) ensure all tests pass when run. Write a testing guide to /home/shared/testing-guide.md documenting: how to run tests, how to add new tests, testing conventions, and coverage requirements. Register /home/shared/testing-guide.md as an artifact.",
+      "blocked_by": ["scaffold"]
+    },
+    {
+      "id": "readme",
+      "subject": "Write project README",
+      "owner": "doc",
+      "description": "Read all artifacts: /home/shared/project-design.md, /home/shared/scaffold-summary.md, /home/shared/devops-summary.md, and /home/shared/testing-guide.md. Write a comprehensive README to /home/shared/outputs/README.md containing: (1) project name and description, (2) features and capabilities, (3) prerequisites and system requirements, (4) installation and setup instructions (local and Docker), (5) configuration reference with all environment variables, (6) usage examples and quick start guide, (7) project structure overview with directory descriptions, (8) development guide (running locally, hot reload, debugging), (9) testing instructions and conventions, (10) CI/CD pipeline description, (11) contributing guidelines (branching strategy, PR process, code style), (12) architecture overview with component descriptions, (13) license placeholder. Register /home/shared/outputs/README.md as an artifact.",
+      "blocked_by": ["tests", "ci-setup"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "arch",
+      "subject": "Swarm started: project-kickoff",
+      "body": "You are leading a new project bootstrap pipeline. Your first task (design) is ready on the task board.\n\nProject: ${PROJECT_NAME:-project}\nType: ${PROJECT_TYPE:-nodejs}\nDescription: ${PROJECT_DESCRIPTION:-A new project}\n\nDesign the project architecture including tech stack, directory structure, key components, and coding conventions. Write to /home/shared/project-design.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

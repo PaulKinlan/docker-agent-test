@@ -1,0 +1,63 @@
+{
+  "name": "incident-response",
+  "description": "Production incident triage, diagnosis, hotfix, verification, and postmortem",
+
+  "agents": [
+    { "name": "ops", "persona": "ops" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "tester", "persona": "qa" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "triage",
+      "subject": "Triage incident: ${INCIDENT_TITLE:-Production Incident}",
+      "owner": "ops",
+      "description": "Triage the production incident. Incident: ${INCIDENT_TITLE:-Production Incident}. Description: ${INCIDENT_DESCRIPTION:-See /home/shared/inputs/incident.md}. Severity: ${SEVERITY:-high}. Read /home/shared/inputs/incident.md if available for detailed incident information including error logs, alerts, and user reports. Perform initial triage and write to /home/shared/incident-triage.md containing: (1) incident classification (severity: P1-P4, category: outage/degradation/data-loss/security), (2) affected systems and services, (3) timeline of events so far (when detected, when reported, current status), (4) initial symptoms and error signatures, (5) affected user population estimate, (6) any immediate mitigation steps taken or recommended, (7) communication status (who has been notified), (8) preliminary hypotheses for root cause. Register /home/shared/incident-triage.md as an artifact."
+    },
+    {
+      "id": "diagnose",
+      "subject": "Diagnose root cause",
+      "owner": "dev",
+      "description": "Read /home/shared/incident-triage.md for the incident context, affected systems, and preliminary hypotheses. Perform root cause analysis: (1) examine relevant source code for the affected components, (2) analyze any error logs, stack traces, or monitoring data available in /home/shared/inputs/, (3) trace the execution path that leads to the failure, (4) identify the exact change, condition, or external factor that caused the incident, (5) determine if this is a code bug, configuration issue, infrastructure problem, or external dependency failure, (6) identify any contributing factors or cascading failures. Write diagnosis to /home/shared/diagnosis.md containing: confirmed root cause, evidence supporting the diagnosis, failure mechanism explanation, and contributing factors. Register /home/shared/diagnosis.md as an artifact.",
+      "blocked_by": ["triage"]
+    },
+    {
+      "id": "impact-assessment",
+      "subject": "Assess blast radius and user impact",
+      "owner": "ops",
+      "description": "Read /home/shared/diagnosis.md for the confirmed root cause and failure mechanism. Assess the full impact of the incident and write to /home/shared/impact-assessment.md containing: (1) blast radius -- all systems, services, and features affected (directly and indirectly), (2) user impact -- estimated number of affected users, types of impact (errors, data loss, degraded performance), (3) duration of impact -- when it started, how long users were affected, (4) data integrity assessment -- whether any data was corrupted, lost, or inconsistently written, (5) SLA/SLO impact -- which service level objectives were breached, (6) business impact -- revenue loss, reputation damage, compliance implications, (7) geographic or segment-specific impact patterns. Register /home/shared/impact-assessment.md as an artifact.",
+      "blocked_by": ["diagnose"]
+    },
+    {
+      "id": "hotfix",
+      "subject": "Develop hotfix",
+      "owner": "dev",
+      "description": "Read /home/shared/diagnosis.md for the root cause. Develop a hotfix that resolves the incident with minimal risk of side effects. Create the directory /home/shared/hotfix/ and write the fix there: (1) implement the minimal code change that fixes the root cause, (2) if a code fix is not appropriate, document the configuration or infrastructure change needed, (3) include a rollback plan in case the hotfix causes new issues, (4) keep the fix as small and focused as possible to minimize review risk. Write documentation to /home/shared/hotfix-summary.md containing: files changed, description of each change, why this approach was chosen over alternatives, deployment instructions, rollback procedure, and any monitoring to watch after deployment. Register /home/shared/hotfix-summary.md as an artifact.",
+      "blocked_by": ["diagnose"]
+    },
+    {
+      "id": "verify",
+      "subject": "Verify hotfix",
+      "owner": "tester",
+      "description": "Read /home/shared/hotfix-summary.md for the fix details and /home/shared/diagnosis.md for the root cause. Verify the hotfix in /home/shared/hotfix/: (1) confirm the fix addresses the root cause described in the diagnosis, (2) test the specific failure scenario to verify it no longer occurs, (3) test related functionality for regressions, (4) verify error handling works correctly under the fixed condition, (5) check that the fix does not introduce performance degradation, (6) validate the rollback procedure works if needed, (7) test edge cases around the fix boundary. Write verification results to /home/shared/verification.md with: test scenarios executed, pass/fail results, regression test results, and overall verification verdict (approved/rejected with rationale). Register /home/shared/verification.md as an artifact.",
+      "blocked_by": ["hotfix"]
+    },
+    {
+      "id": "incident-report",
+      "subject": "Write incident postmortem report",
+      "owner": "doc",
+      "description": "Read all artifacts: /home/shared/incident-triage.md, /home/shared/diagnosis.md, /home/shared/impact-assessment.md, /home/shared/hotfix-summary.md, and /home/shared/verification.md. Write a comprehensive incident postmortem to /home/shared/outputs/incident-report.md containing: (1) incident summary (title, severity, duration, impact), (2) detailed timeline from detection through resolution with timestamps, (3) root cause analysis with technical details, (4) impact assessment (users affected, SLA breach, business impact), (5) resolution description and hotfix details, (6) verification and deployment results, (7) what went well during the response, (8) what could be improved, (9) action items for prevention with owners and due dates, (10) follow-up items (permanent fix, monitoring improvements, runbook updates), (11) appendix with relevant logs, metrics, and evidence. Register /home/shared/outputs/incident-report.md as an artifact.",
+      "blocked_by": ["verify", "impact-assessment"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "ops",
+      "subject": "Swarm started: incident-response",
+      "body": "You are leading a production incident response pipeline. Your first task (triage) is ready on the task board.\n\nIncident: ${INCIDENT_TITLE:-Production Incident}\nDescription: ${INCIDENT_DESCRIPTION:-See /home/shared/inputs/incident.md}\nSeverity: ${SEVERITY:-high}\n\nTriage the incident immediately. Classify severity, identify affected systems, document the timeline, and form initial hypotheses. Read /home/shared/inputs/incident.md if available. Write triage to /home/shared/incident-triage.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

@@ -72,7 +72,9 @@ AGENTS_MEMBERS=$(getent group agents 2>/dev/null | cut -d: -f4 | tr ',' ' ')
             [[ "$PERSONA_NAME" == "base" ]] && continue
 
             # Check if a Unix group exists for this persona
-            MEMBERS=$(getent group "$PERSONA_NAME" 2>/dev/null | cut -d: -f4 | tr ',' ' ')
+            # Note: pipefail causes getent to propagate exit code when group doesn't exist,
+            # so we isolate the pipeline from the parent shell's errexit.
+            MEMBERS=$(getent group "$PERSONA_NAME" 2>/dev/null | cut -d: -f4 | tr ',' ' ' || true)
             [[ -z "$MEMBERS" ]] && continue
 
             if [[ "$PERSONA_ALIASES_FOUND" == false ]]; then

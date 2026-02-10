@@ -1,0 +1,64 @@
+{
+  "name": "migration-plan",
+  "description": "Codebase migration with assessment, research, migration, testing, and documentation",
+
+  "agents": [
+    { "name": "arch", "persona": "architect" },
+    { "name": "scout", "persona": "researcher" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "tester", "persona": "qa" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "assess",
+      "subject": "Assess current codebase for migration",
+      "owner": "arch",
+      "description": "Examine the current codebase at ${MIGRATION_FROM:-/home/shared/inputs/repo}. Scope: ${MIGRATION_SCOPE:-full}. Produce a migration assessment at /home/shared/assessment.md containing: (1) technology inventory (languages, frameworks, libraries, and their versions), (2) architecture overview (components, services, data stores), (3) dependency graph of internal modules, (4) external service integrations and APIs consumed, (5) database schema and data access patterns, (6) build system and toolchain, (7) test suite inventory and coverage, (8) configuration and environment management, (9) items that must be migrated vs. items that can remain unchanged, (10) estimated complexity and risk for each component, (11) recommended migration order (lowest risk first). Register /home/shared/assessment.md as an artifact."
+    },
+    {
+      "id": "research",
+      "subject": "Research target platform and migration path",
+      "owner": "scout",
+      "description": "Read /home/shared/assessment.md to understand the current tech stack and migration scope. Research the target platform: ${MIGRATION_TO:-specified in assessment}. Produce a migration research document at /home/shared/migration-research.md containing: (1) target platform capabilities and limitations, (2) mapping of current APIs/libraries to target equivalents, (3) breaking changes between source and target, (4) available migration tools and automation, (5) dependency compatibility matrix (which deps have target-compatible versions), (6) configuration format differences, (7) build system changes needed, (8) known gotchas and common pitfalls from others who have done similar migrations, (9) performance implications, (10) recommended migration strategy (big bang vs. incremental vs. strangler fig). Register /home/shared/migration-research.md as an artifact.",
+      "blocked_by": ["assess"]
+    },
+    {
+      "id": "migrate-core",
+      "subject": "Migrate core application code",
+      "owner": "dev",
+      "description": "Read /home/shared/migration-research.md for the migration strategy and API mappings. Migrate the core application code from ${MIGRATION_FROM:-/home/shared/inputs/repo} to the target platform. Create the directory /home/shared/migrated/ and write migrated code there. Migration steps: (1) set up target project structure, (2) migrate core business logic, translating APIs as documented in the research, (3) update import paths and module system, (4) adapt error handling to target conventions, (5) migrate data models and database access code, (6) update async/concurrency patterns if they differ, (7) ensure type system compatibility. Write detailed change documentation to /home/shared/migration-changes-core.md listing: every file migrated, what changed and why, any functionality that could not be directly translated, and workarounds applied. Register /home/shared/migration-changes-core.md as an artifact.",
+      "blocked_by": ["research"]
+    },
+    {
+      "id": "migrate-deps",
+      "subject": "Migrate dependencies and configuration",
+      "owner": "dev",
+      "description": "Read /home/shared/migration-research.md for dependency compatibility and config format changes. Update all dependencies, configuration files, and build system in /home/shared/migrated/: (1) create new dependency manifest (package.json, requirements.txt, go.mod, etc.) with target-compatible versions, (2) replace incompatible dependencies with recommended alternatives from the research, (3) migrate configuration files to target format, (4) update build scripts and Makefile, (5) migrate CI/CD configuration, (6) update Docker files if present, (7) migrate environment variable handling, (8) update any scripts or tooling. Write documentation to /home/shared/migration-changes-deps.md listing all dependency changes (old -> new), config changes, and build system modifications. Register /home/shared/migration-changes-deps.md as an artifact.",
+      "blocked_by": ["research"]
+    },
+    {
+      "id": "test-migration",
+      "subject": "Test migrated codebase",
+      "owner": "tester",
+      "description": "Read /home/shared/migration-changes-core.md and /home/shared/migration-changes-deps.md to understand all changes made. Test the migrated code in /home/shared/migrated/ thoroughly: (1) verify the project builds successfully on the target platform, (2) run any migrated tests and document pass/fail results, (3) manually test core functionality for correctness, (4) compare behavior between original (${MIGRATION_FROM:-/home/shared/inputs/repo}) and migrated code for key scenarios, (5) test edge cases around areas that required workarounds, (6) verify all external integrations still work, (7) check for performance regressions, (8) validate configuration loading in different environments. Write comprehensive test results to /home/shared/migration-test-results.md with: test matrix, pass/fail for each scenario, behavior differences found, and overall migration readiness assessment. Register /home/shared/migration-test-results.md as an artifact.",
+      "blocked_by": ["migrate-core", "migrate-deps"]
+    },
+    {
+      "id": "migration-guide",
+      "subject": "Write migration guide",
+      "owner": "doc",
+      "description": "Read all artifacts: /home/shared/assessment.md, /home/shared/migration-research.md, /home/shared/migration-changes-core.md, /home/shared/migration-changes-deps.md, and /home/shared/migration-test-results.md. Write a comprehensive migration guide to /home/shared/outputs/migration-guide.md containing: (1) migration overview and rationale, (2) before and after architecture comparison, (3) step-by-step migration procedure, (4) complete list of changes with before/after code examples, (5) dependency migration table (old package -> new package with version), (6) configuration changes reference, (7) breaking changes and how they were addressed, (8) known gotchas and troubleshooting guide, (9) rollback procedure, (10) performance comparison notes, (11) post-migration checklist, (12) future considerations and technical debt introduced. Register /home/shared/outputs/migration-guide.md as an artifact.",
+      "blocked_by": ["test-migration"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "arch",
+      "subject": "Swarm started: migration-plan",
+      "body": "You are leading a codebase migration pipeline. Your first task (assess) is ready on the task board.\n\nSource: ${MIGRATION_FROM:-/home/shared/inputs/repo}\nTarget: ${MIGRATION_TO:-specified in assessment}\nScope: ${MIGRATION_SCOPE:-full}\n\nAssess the current codebase. Inventory all technologies, map the architecture, identify what needs migration vs. what can stay, and estimate complexity. Write your assessment to /home/shared/assessment.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

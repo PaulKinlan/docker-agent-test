@@ -12,6 +12,8 @@ import {
   getHelpLines,
   getPersonaLines,
   getReadMailLines,
+  getListPresetsLines,
+  getPresetInfoLines,
 } from "./lib/commands.mjs";
 
 let lineId = 0;
@@ -22,7 +24,7 @@ function nextId() {
 export default function App() {
   const { exit } = useApp();
   const [lines, setLines] = useState(() =>
-    getBannerLines().map((l) => ({ ...l, id: nextId() }))
+    getBannerLines().map((l) => ({ ...l, id: nextId() })),
   );
   const [isRunning, setIsRunning] = useState(false);
   const [containerStatus, setContainerStatus] = useState("unknown");
@@ -48,7 +50,7 @@ export default function App() {
     (text, type) => {
       appendLines([{ text, type }]);
     },
-    [appendLines]
+    [appendLines],
   );
 
   // Ctrl+C handling
@@ -85,7 +87,7 @@ export default function App() {
       });
       childRef.current = child;
     },
-    [appendLine]
+    [appendLine],
   );
 
   const runSequence = useCallback(
@@ -114,7 +116,7 @@ export default function App() {
       appendLine("  Done.", "success");
       setContainerStatus(getContainerStatus());
     },
-    [appendLine]
+    [appendLine],
   );
 
   const handleSubmit = useCallback(
@@ -136,10 +138,7 @@ export default function App() {
 
       // Check container requirement
       if (needsContainer(name) && containerStatus !== "up") {
-        appendLine(
-          "  Container is not running. Run 'up' first.",
-          "error"
-        );
+        appendLine("  Container is not running. Run 'up' first.", "error");
         return;
       }
 
@@ -165,11 +164,11 @@ export default function App() {
           case "shell":
             appendLine(
               `  Interactive shells cannot run inside the TUI.`,
-              "info"
+              "info",
             );
             appendLine(
               `  Run instead: make agent-shell NAME=${args[0]}`,
-              "info"
+              "info",
             );
             break;
           case "personas":
@@ -181,21 +180,27 @@ export default function App() {
           case "reset":
             appendLine(
               "  Full reset requires sudo and cannot run inside the TUI.",
-              "info"
+              "info",
             );
-            appendLine(
-              "  Run instead: make reset",
-              "info"
-            );
+            appendLine("  Run instead: make reset", "info");
             break;
           case "status": {
             const s = getContainerStatus();
             setContainerStatus(s);
             const icon = s === "up" ? "\u25cf" : "\u25cb";
             const label = s === "up" ? "running" : "stopped";
-            appendLine(`  ${containerName}: ${icon} ${label}`, s === "up" ? "success" : "error");
+            appendLine(
+              `  ${containerName}: ${icon} ${label}`,
+              s === "up" ? "success" : "error",
+            );
             break;
           }
+          case "list-presets":
+            appendLines(getListPresetsLines());
+            break;
+          case "preset-info":
+            appendLines(getPresetInfoLines(args[0]));
+            break;
         }
         return;
       }
@@ -214,7 +219,7 @@ export default function App() {
       exit,
       runProcess,
       runSequence,
-    ]
+    ],
   );
 
   return React.createElement(
@@ -222,6 +227,6 @@ export default function App() {
     { flexDirection: "column" },
     React.createElement(StatusBar, { containerName, status: containerStatus }),
     React.createElement(Output, { lines }),
-    React.createElement(Prompt, { onSubmit: handleSubmit, isRunning })
+    React.createElement(Prompt, { onSubmit: handleSubmit, isRunning }),
   );
 }

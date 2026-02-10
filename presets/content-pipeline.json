@@ -1,0 +1,49 @@
+{
+  "name": "content-pipeline",
+  "description": "Multi-stage content production from brief to polished output",
+
+  "agents": [
+    { "name": "pat", "persona": "planner" },
+    { "name": "riley", "persona": "researcher" },
+    { "name": "carol", "persona": "writer" },
+    { "name": "dave", "persona": "editor" }
+  ],
+
+  "tasks": [
+    {
+      "id": "outline",
+      "subject": "Create content outline from brief",
+      "owner": "pat",
+      "description": "Read /home/shared/inputs/brief.md and produce a detailed outline with sections, key points, and target audience. Write outline to /home/shared/outline.md"
+    },
+    {
+      "id": "research",
+      "subject": "Research supporting material",
+      "owner": "riley",
+      "description": "Read /home/shared/outline.md and any source material in /home/shared/inputs/. Produce structured research notes in /home/shared/research/. Register each file as an artifact.",
+      "blocked_by": ["outline"]
+    },
+    {
+      "id": "draft",
+      "subject": "Write the first draft",
+      "owner": "carol",
+      "description": "Using /home/shared/outline.md and /home/shared/research/, write a complete first draft. Save to /home/shared/draft.md and register as artifact.",
+      "blocked_by": ["outline", "research"]
+    },
+    {
+      "id": "edit",
+      "subject": "Edit and polish the draft",
+      "owner": "dave",
+      "description": "Review /home/shared/draft.md for clarity, consistency, grammar, and tone. Produce the final version at /home/shared/outputs/final.md and register as artifact.",
+      "blocked_by": ["draft"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "pat",
+      "subject": "Swarm started: content-pipeline",
+      "body": "You are leading a content production pipeline. Your first task (outline) is ready on the task board.\n\nTopic: ${TOPIC:-unspecified}\n\nCheck the brief at /home/shared/inputs/brief.md if available, otherwise create an outline based on the topic above.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

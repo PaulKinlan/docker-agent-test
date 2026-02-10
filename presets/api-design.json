@@ -1,0 +1,57 @@
+{
+  "name": "api-design",
+  "description": "API design, implementation, testing, and documentation pipeline",
+
+  "agents": [
+    { "name": "pm", "persona": "planner" },
+    { "name": "arch", "persona": "architect" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "tester", "persona": "qa" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "requirements",
+      "subject": "Gather API requirements: ${API_NAME:-API}",
+      "owner": "pm",
+      "description": "Read the API brief from /home/shared/inputs/api-brief.md. If that file does not exist, use: ${API_BRIEF:-See /home/shared/inputs/api-brief.md}. Document comprehensive API requirements at /home/shared/api-requirements.md including: (1) list of endpoints needed with HTTP methods, (2) data models and their relationships, (3) authentication and authorization requirements (API keys, OAuth, JWT, etc.), (4) rate limiting and quota requirements, (5) error handling strategy and standard error response format, (6) pagination strategy for list endpoints, (7) filtering and sorting requirements, (8) versioning requirements, (9) performance requirements (latency, throughput), (10) backwards compatibility constraints. Register /home/shared/api-requirements.md as an artifact."
+    },
+    {
+      "id": "api-design",
+      "subject": "Design API endpoints and schemas",
+      "owner": "arch",
+      "description": "Read /home/shared/api-requirements.md and examine the existing codebase at ${REPO_PATH:-/home/shared/inputs/repo} for current patterns and conventions. Design a complete API at /home/shared/api-design.md including: (1) RESTful endpoint paths with HTTP methods and descriptions, (2) request schemas with required/optional fields and validation rules, (3) response schemas with status codes and example payloads, (4) error code taxonomy with HTTP status mapping, (5) authentication flow and header requirements, (6) versioning strategy (URL path, header, or query param), (7) HATEOAS links if applicable, (8) rate limit headers and behavior, (9) webhook designs if needed, (10) OpenAPI/Swagger skeleton structure. Register /home/shared/api-design.md as an artifact.",
+      "blocked_by": ["requirements"]
+    },
+    {
+      "id": "implement",
+      "subject": "Implement the API",
+      "owner": "dev",
+      "description": "Read /home/shared/api-design.md for the complete API design. Implement all endpoints in ${REPO_PATH:-/home/shared/inputs/repo} following the specified schemas, error codes, and authentication strategy. Implement: (1) route handlers for each endpoint, (2) request validation and sanitization, (3) response serialization matching the designed schemas, (4) error handling middleware with proper status codes, (5) authentication and authorization middleware, (6) input validation, (7) database models or data layer if needed. Write implementation notes to /home/shared/api-implementation.md documenting: files created/modified, middleware chain, any design deviations, and how to start/test the API locally. Register /home/shared/api-implementation.md as an artifact.",
+      "blocked_by": ["api-design"]
+    },
+    {
+      "id": "test-api",
+      "subject": "Test all API endpoints",
+      "owner": "tester",
+      "description": "Read /home/shared/api-design.md for expected behavior and /home/shared/api-implementation.md for implementation details. Write and run integration tests for all endpoints in ${REPO_PATH:-/home/shared/inputs/repo}. Test categories: (1) happy path for each endpoint with valid inputs, (2) boundary cases (empty strings, max lengths, zero values), (3) error cases (missing required fields, invalid types, malformed JSON), (4) authentication tests (missing token, expired token, insufficient permissions), (5) status code verification for all scenarios, (6) response schema validation, (7) pagination behavior, (8) concurrent request handling. Write detailed test results to /home/shared/api-test-results.md with pass/fail status, coverage summary, and any bugs found. Register /home/shared/api-test-results.md as an artifact.",
+      "blocked_by": ["implement"]
+    },
+    {
+      "id": "api-docs",
+      "subject": "Write API documentation",
+      "owner": "doc",
+      "description": "Read /home/shared/api-design.md for the API design, /home/shared/api-implementation.md for implementation notes, and /home/shared/api-test-results.md for test coverage. Write comprehensive API documentation to /home/shared/outputs/api-docs.md containing: (1) API overview and base URL, (2) authentication guide with token acquisition examples, (3) endpoint reference with method, path, description, parameters, request body, and response for each endpoint, (4) curl and code examples for each endpoint (at least 2 languages), (5) error code reference table, (6) rate limiting documentation, (7) pagination guide, (8) versioning and deprecation policy, (9) changelog, (10) SDKs or client library recommendations. Register /home/shared/outputs/api-docs.md as an artifact.",
+      "blocked_by": ["test-api"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "pm",
+      "subject": "Swarm started: api-design",
+      "body": "You are leading an API design and implementation pipeline. Your first task (requirements) is ready on the task board.\n\nAPI: ${API_NAME:-API}\nBrief: ${API_BRIEF:-See /home/shared/inputs/api-brief.md}\nRepo: ${REPO_PATH:-/home/shared/inputs/repo}\n\nRead the API brief from /home/shared/inputs/api-brief.md if available. Document all endpoints needed, data models, auth requirements, and error handling strategy. Write to /home/shared/api-requirements.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

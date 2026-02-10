@@ -1,0 +1,63 @@
+{
+  "name": "data-pipeline",
+  "description": "Data ingestion, validation, transformation, analysis, and reporting pipeline",
+
+  "agents": [
+    { "name": "eng", "persona": "coder" },
+    { "name": "val", "persona": "qa" },
+    { "name": "ana", "persona": "analyst" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "ingest",
+      "subject": "Ingest and normalize raw data",
+      "owner": "eng",
+      "description": "Load raw data from ${DATA_SOURCE:-/home/shared/inputs/data}. Identify the format (${DATA_FORMAT:-csv}) and structure of all data files present. Perform initial ingestion: (1) parse all files in the source directory, (2) normalize column names (lowercase, underscores, no special characters), (3) standardize date formats to ISO 8601, (4) normalize numeric formats (remove currency symbols, commas), (5) handle character encoding issues (convert to UTF-8), (6) create a unified schema across files if multiple exist. Create the directory /home/shared/data/ingested/ and write cleaned data files there. Also write /home/shared/data/ingestion-log.md documenting: files processed, row counts, schema detected, normalization steps applied, and any warnings. Register /home/shared/data/ingestion-log.md as an artifact."
+    },
+    {
+      "id": "validate",
+      "subject": "Validate data quality",
+      "owner": "val",
+      "description": "Validate all data files in /home/shared/data/ingested/. Read /home/shared/data/ingestion-log.md for context on the data schema and transformations applied. Perform quality checks: (1) completeness -- identify missing values per column with percentages, (2) consistency -- check for contradictory values and duplicate records, (3) format compliance -- verify data types match expected schema, (4) range validation -- identify outliers and values outside expected ranges, (5) referential integrity -- if multiple tables exist, verify foreign key relationships, (6) uniqueness -- check primary key uniqueness constraints. Write a validation report to /home/shared/data/validation.md with: summary statistics, quality score per column, list of issues found with severity and row references, and recommendations for data cleaning. Register /home/shared/data/validation.md as an artifact.",
+      "blocked_by": ["ingest"]
+    },
+    {
+      "id": "transform",
+      "subject": "Clean and transform data",
+      "owner": "eng",
+      "description": "Read /home/shared/data/validation.md for quality issues found. Apply data cleaning and transformations to the data in /home/shared/data/ingested/: (1) handle missing values (imputation, removal, or flagging based on context), (2) remove or merge duplicate records, (3) fix inconsistencies identified in validation, (4) apply type conversions where needed, (5) derive computed columns if useful for analysis, (6) create aggregated views if the data supports it, (7) normalize or scale numeric features if appropriate. Create the directory /home/shared/data/transformed/ and write the cleaned, transformed data there. Write a transformation log to /home/shared/data/transformation-log.md documenting all changes applied and row count before/after. Register /home/shared/data/transformation-log.md as an artifact.",
+      "blocked_by": ["validate"]
+    },
+    {
+      "id": "analyze",
+      "subject": "Analyze data and extract findings",
+      "owner": "ana",
+      "description": "Read the transformed data from /home/shared/data/transformed/ and context from /home/shared/data/transformation-log.md. Perform statistical analysis to answer: ${ANALYSIS_QUESTION:-Summarize key trends}. Analysis should include: (1) descriptive statistics (mean, median, mode, standard deviation, quartiles) for numeric columns, (2) frequency distributions for categorical columns, (3) trend analysis over time if temporal data exists, (4) correlation analysis between key variables, (5) anomaly detection and notable patterns, (6) segmentation or grouping analysis if applicable, (7) hypothesis testing if the question warrants it. Create the directory /home/shared/analysis/ if it does not exist. Write findings to /home/shared/analysis/findings.md with clear conclusions supported by data. Register /home/shared/analysis/findings.md as an artifact.",
+      "blocked_by": ["transform"]
+    },
+    {
+      "id": "visualize",
+      "subject": "Create data summaries and distribution analysis",
+      "owner": "ana",
+      "description": "Read the transformed data from /home/shared/data/transformed/. Create comprehensive data summaries suitable for reporting: (1) frequency tables for all categorical variables, (2) distribution summaries for all numeric variables (histogram-style text tables with bin counts), (3) cross-tabulations for key variable pairs, (4) time series summaries if temporal data exists, (5) top-N and bottom-N listings for ranked data, (6) percentile tables, (7) ASCII-art or text-based charts where helpful. Create the directory /home/shared/analysis/ if it does not exist. Write all summaries to /home/shared/analysis/summaries.md in a well-organized format with clear headings and tables. Register /home/shared/analysis/summaries.md as an artifact.",
+      "blocked_by": ["transform"]
+    },
+    {
+      "id": "report",
+      "subject": "Write comprehensive data report",
+      "owner": "doc",
+      "description": "Read all analysis artifacts: /home/shared/data/ingestion-log.md, /home/shared/data/validation.md, /home/shared/data/transformation-log.md, /home/shared/analysis/findings.md, and /home/shared/analysis/summaries.md. Synthesize everything into a comprehensive data report at /home/shared/outputs/data-report.md containing: (1) executive summary with key takeaways, (2) data source description and methodology, (3) data quality assessment summary, (4) key findings and insights with supporting data, (5) statistical summaries and distribution tables, (6) trend analysis and patterns identified, (7) anomalies and notable observations, (8) conclusions and recommendations, (9) appendix with detailed data tables, (10) methodology notes and limitations. Register /home/shared/outputs/data-report.md as an artifact.",
+      "blocked_by": ["analyze", "visualize"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "eng",
+      "subject": "Swarm started: data-pipeline",
+      "body": "You are leading a data processing and analysis pipeline. Your first task (ingest) is ready on the task board.\n\nData source: ${DATA_SOURCE:-/home/shared/inputs/data}\nData format: ${DATA_FORMAT:-csv}\nAnalysis question: ${ANALYSIS_QUESTION:-Summarize key trends}\n\nLoad the raw data, normalize the format, and write cleaned data to /home/shared/data/ingested/. Document your ingestion process in /home/shared/data/ingestion-log.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

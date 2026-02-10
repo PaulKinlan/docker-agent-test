@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list artifact-register artifact-get
+.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list artifact-register artifact-get list-presets load-preset
 
 help:
 	@echo "Container management:"
@@ -50,6 +50,11 @@ help:
 	@echo "  make artifact-list                      - List shared artifacts"
 	@echo "  make artifact-register FILE=reports/out.csv DESCRIPTION=\"Q4 report\" - Register an artifact"
 	@echo "  make artifact-get FILE=reports/out.csv   - Get metadata for an artifact"
+	@echo ""
+	@echo "Presets:"
+	@echo "  make list-presets                        - List available workflow presets"
+	@echo "  make load-preset FILE=presets/foo.json   - Load a workflow preset"
+	@echo "  make load-preset FILE=... DRY_RUN=1     - Preview without executing"
 	@echo ""
 	@echo "Interactive TUI:"
 	@echo "  make install-tui                        - Install TUI dependencies (first time)"
@@ -267,6 +272,27 @@ ifndef FILE
 	$(error FILE is required. Usage: make artifact-get FILE=reports/out.csv)
 endif
 	docker-compose exec -T agent-host /usr/local/bin/artifact.sh get $(FILE)
+
+# --- Presets ---
+
+list-presets: ## List available workflow presets
+	@echo "Available presets (in presets/):"
+	@echo ""
+	@for f in presets/*.json; do \
+		name=$$(basename "$$f" .json); \
+		desc=$$(jq -r '.description // "No description"' "$$f"); \
+		printf "  %-25s %s\n" "$$name" "$$desc"; \
+	done
+	@echo ""
+	@echo "Usage: make load-preset FILE=presets/<name>.json [DRY_RUN=1] [SKIP_EXISTING=1]"
+
+load-preset: ## Load a workflow preset
+ifndef FILE
+	$(error FILE is required. Usage: make load-preset FILE=presets/foo.json [DRY_RUN=1] [SKIP_EXISTING=1])
+endif
+	./scripts/load-preset.sh $(FILE) \
+		$(if $(filter 1,$(DRY_RUN)),--dry-run) \
+		$(if $(filter 1,$(SKIP_EXISTING)),--skip-existing)
 
 # --- Interactive TUI ---
 

@@ -1,0 +1,71 @@
+{
+  "name": "feature-build",
+  "description": "Full feature implementation from spec through review to documentation",
+
+  "agents": [
+    { "name": "pm", "persona": "planner" },
+    { "name": "arch", "persona": "architect" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "rev", "persona": "reviewer" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "spec",
+      "subject": "Write feature specification: ${FEATURE_NAME:-New Feature}",
+      "owner": "pm",
+      "description": "Read the feature brief from /home/shared/inputs/feature-brief.md. If that file does not exist, use: ${FEATURE_BRIEF:-See /home/shared/inputs/feature-brief.md}. Produce a detailed specification at /home/shared/spec.md. The spec must include: (1) feature overview and motivation, (2) user stories or use cases, (3) detailed functional requirements, (4) non-functional requirements (performance, security, accessibility), (5) acceptance criteria for each requirement, (6) out of scope items, (7) open questions or risks. Register /home/shared/spec.md as an artifact."
+    },
+    {
+      "id": "design",
+      "subject": "Create technical design",
+      "owner": "arch",
+      "description": "Read /home/shared/spec.md for requirements and acceptance criteria. Examine the existing codebase at ${REPO_PATH:-/home/shared/inputs/repo} to understand current architecture, patterns, and conventions. Produce a technical design document at /home/shared/design.md containing: (1) high-level architecture and component diagram, (2) data model changes, (3) API changes or new endpoints, (4) integration points with existing code, (5) migration or backwards compatibility strategy, (6) testing strategy, (7) implementation plan with suggested file locations and function signatures. Register /home/shared/design.md as an artifact.",
+      "blocked_by": ["spec"]
+    },
+    {
+      "id": "implement",
+      "subject": "Implement the feature",
+      "owner": "dev",
+      "description": "Read /home/shared/design.md for the technical design and /home/shared/spec.md for the requirements. Implement the feature in the codebase at ${REPO_PATH:-/home/shared/inputs/repo}, following the design document's architecture, patterns, and file locations. Write clean, well-commented code. Include unit tests for new functionality. Write implementation notes to /home/shared/implementation.md documenting: (1) files created or modified, (2) key implementation decisions, (3) any deviations from the design and why, (4) known limitations, (5) how to test the feature manually. Register /home/shared/implementation.md as an artifact.",
+      "blocked_by": ["design"]
+    },
+    {
+      "id": "review",
+      "subject": "Code review",
+      "owner": "rev",
+      "description": "Review all code changes made in ${REPO_PATH:-/home/shared/inputs/repo} as described in /home/shared/implementation.md. Also reference /home/shared/design.md and /home/shared/spec.md for design intent and requirements. Evaluate: (1) correctness and completeness against spec, (2) code quality and readability, (3) error handling and edge cases, (4) test coverage and quality, (5) performance implications, (6) security considerations. Write findings to /home/shared/review.md with issues categorized as Critical (must fix), Important (should fix), and Suggestion (nice to have). Register /home/shared/review.md as an artifact.",
+      "blocked_by": ["implement"]
+    },
+    {
+      "id": "revise",
+      "subject": "Address review feedback",
+      "owner": "dev",
+      "description": "Read /home/shared/review.md carefully. Address all Critical issues (these are mandatory). Address all Important issues. Consider Suggestions and implement where reasonable. Make changes in ${REPO_PATH:-/home/shared/inputs/repo}. Write revision notes to /home/shared/revision.md documenting: (1) each issue addressed and how, (2) any issues intentionally not addressed and why, (3) additional changes made during revision. Register /home/shared/revision.md as an artifact.",
+      "blocked_by": ["review"]
+    },
+    {
+      "id": "final-review",
+      "subject": "Final review pass",
+      "owner": "rev",
+      "description": "Read /home/shared/revision.md and review the updated code in ${REPO_PATH:-/home/shared/inputs/repo}. Verify that all Critical and Important issues from /home/shared/review.md have been properly addressed. Check that revisions did not introduce new issues. Write final review to /home/shared/final-review.md with: (1) status of each previously raised issue, (2) any new concerns, (3) overall approval or rejection with rationale. Register /home/shared/final-review.md as an artifact.",
+      "blocked_by": ["revise"]
+    },
+    {
+      "id": "docs",
+      "subject": "Write feature documentation",
+      "owner": "doc",
+      "description": "Read /home/shared/spec.md for requirements, /home/shared/design.md for architecture, /home/shared/implementation.md for implementation details, and /home/shared/final-review.md for approval status. Write user-facing documentation to /home/shared/outputs/feature-docs.md containing: (1) feature overview and what it enables, (2) getting started guide, (3) usage examples with code snippets, (4) configuration options, (5) API reference if applicable, (6) troubleshooting common issues, (7) changelog entry. Register /home/shared/outputs/feature-docs.md as an artifact.",
+      "blocked_by": ["final-review"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "pm",
+      "subject": "Swarm started: feature-build",
+      "body": "You are leading a feature implementation pipeline. Your first task (spec) is ready on the task board.\n\nFeature: ${FEATURE_NAME:-New Feature}\nBrief: ${FEATURE_BRIEF:-See /home/shared/inputs/feature-brief.md}\nRepo: ${REPO_PATH:-/home/shared/inputs/repo}\n\nRead the feature brief from /home/shared/inputs/feature-brief.md if available, otherwise use the description above. Write a detailed specification with acceptance criteria to /home/shared/spec.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

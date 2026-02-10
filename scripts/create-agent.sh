@@ -163,9 +163,14 @@ if [[ -n "$PERSONA" ]]; then
     fi
     GROUPS="agents,$PERSONA_GROUP"
 fi
-useradd -m -s /bin/bash -G "$GROUPS" -c "$GECOS" "$USERNAME"
+# Create user without -m (useradd -m fails on Docker bind mounts from macOS
+# due to VirtioFS permission mapping issues). We create the home dir manually.
+useradd -M -s /bin/bash -G "$GROUPS" -c "$GECOS" -d "/home/$USERNAME" "$USERNAME"
 
-# Lock down home directory so other agents cannot read it
+# Manually create home directory and populate from /etc/skel
+mkdir -p "/home/$USERNAME"
+cp -a /etc/skel/. "/home/$USERNAME/"
+chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
 chmod 700 "/home/$USERNAME"
 echo "  -> User created with home at /home/$USERNAME (mode 700)"
 
@@ -240,6 +245,36 @@ chmod 644 "$CLAUDE_DIR/config.json"
 mkdir -p "$CLAUDE_DIR/skills"
 chown "$USERNAME:$USERNAME" "$CLAUDE_DIR/skills"
 
+# Install skill packs from /etc/agent-skills/
+SKILLS_SRC="/etc/agent-skills"
+AGENT_SKILLS="$CLAUDE_DIR/skills"
+
+install_skills_from() {
+    local src_dir="$1"
+    [[ -d "$src_dir" ]] || return 0
+    for skill_dir in "$src_dir"/*/; do
+        [[ -d "$skill_dir" ]] || continue
+        local skill_name
+        skill_name="$(basename "$skill_dir")"
+        # Never overwrite existing skills (preserves agent customizations)
+        if [[ ! -d "$AGENT_SKILLS/$skill_name" ]]; then
+            cp -r "$skill_dir" "$AGENT_SKILLS/$skill_name"
+            chown -R "$USERNAME:$USERNAME" "$AGENT_SKILLS/$skill_name"
+        fi
+    done
+}
+
+# Universal skills (for all agents)
+install_skills_from "$SKILLS_SRC/_universal"
+
+# Persona-specific skills
+if [[ -n "$PERSONA" ]]; then
+    install_skills_from "$SKILLS_SRC/${PERSONA%.md}"
+fi
+
+SKILL_COUNT=$(find "$AGENT_SKILLS" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l)
+echo "  -> Skills installed: $SKILL_COUNT"
+
 echo "  -> .claude/ directory created (agent-writable, config.json root-owned)"
 
 # 4. Configure per-agent API keys if provided
@@ -261,84 +296,34 @@ if [[ ${#API_KEYS[@]} -gt 0 ]]; then
     echo "  -> API keys configured (${#API_KEYS[@]} key(s))"
 fi
 
-# 5. Enable and start the agent service for this user
-# All systemctl calls use timeout with --kill-after to prevent indefinite
-# hangs caused by D-Bus communication failures in Docker containers.
-echo "  Enabling agent@${USERNAME}.service..."
-if ! timeout --kill-after=5 10 systemctl enable "agent@${USERNAME}.service" 2>&1; then
-    echo "  Warning: systemctl enable timed out or failed (continuing anyway)" >&2
-fi
+# 5. Start the agent process
+# We use direct process launch instead of systemd services because systemd's
+# cgroup-based process spawning is broken in Docker Desktop (macOS) with
+# cgroup v2 and systemd v256+. The container's systemd boots targets fine
+# but ExecStart processes get exit=255 with 0B memory (never actually exec'd).
+#
+# Direct launch via nohup+su gives us:
+#   - Process runs as the agent user (same as systemd User= would)
+#   - Logs go to a file (since journald is also broken)
+#   - PID tracked via a pidfile for stop/health-check scripts
+AGENT_LOG="/var/log/agent-${USERNAME}.log"
+AGENT_PID="/run/agent-${USERNAME}.pid"
 
-# Ensure systemd has picked up the new instance before starting
-echo "  Reloading systemd daemon..."
-if ! timeout --kill-after=5 10 systemctl daemon-reload 2>&1; then
-    echo "  Warning: systemctl daemon-reload timed out or failed (continuing anyway)" >&2
-fi
+echo "  Starting agent process..."
+nohup su - "$USERNAME" -c "/usr/local/bin/run-agent.sh" \
+    > "$AGENT_LOG" 2>&1 &
+AGENT_PID_VAL=$!
+echo "$AGENT_PID_VAL" > "$AGENT_PID"
 
-# Wait for basic.target (the After= dependency in agent@.service).
-# In Docker, systemctl is-system-running may never report "running", so
-# poll the specific target we need instead.
-echo "  Waiting for basic.target..."
-BOOT_WAIT=0
-BOOT_TIMEOUT=60
-while ! systemctl is-active --quiet basic.target 2>/dev/null; do
-    if (( BOOT_WAIT >= BOOT_TIMEOUT )); then
-        echo "  Warning: basic.target not reached after ${BOOT_TIMEOUT}s (continuing anyway)." >&2
-        break
-    fi
-    sleep 1
-    ((BOOT_WAIT++))
-done
-if (( BOOT_WAIT > 0 && BOOT_WAIT < BOOT_TIMEOUT )); then
-    echo "  basic.target reached after ${BOOT_WAIT}s."
-fi
-
-# Start the service (timeout prevents Docker/D-Bus hangs)
-echo "  Starting agent@${USERNAME}.service..."
-START_OUTPUT=$(timeout --kill-after=5 30 systemctl start "agent@${USERNAME}.service" 2>&1) || {
-    echo "  Warning: systemctl start returned an error." >&2
-    if [[ -n "$START_OUTPUT" ]]; then
-        echo "$START_OUTPUT" >&2
-    fi
-}
-
-# Verify the service is actually running (handles slow start and queued jobs)
-echo "  Verifying service status..."
-SERVICE_OK=false
-for i in $(seq 1 10); do
-    if systemctl is-active --quiet "agent@${USERNAME}.service" 2>/dev/null; then
-        SERVICE_OK=true
-        break
-    fi
-    sleep 1
-done
-
-if [[ "$SERVICE_OK" != "true" ]]; then
-    echo "" >&2
-    echo "  Error: agent@${USERNAME}.service is not running." >&2
-    echo "" >&2
-    echo "  Service status:" >&2
-    timeout --kill-after=5 10 systemctl status "agent@${USERNAME}.service" --no-pager 2>&1 | sed 's/^/    /' >&2 || true
-    echo "" >&2
-    # Show journal output if any
-    JOURNAL_OUTPUT=$(timeout --kill-after=5 10 journalctl -u "agent@${USERNAME}.service" --no-pager -n 20 2>&1) || true
-    if [[ -n "$JOURNAL_OUTPUT" ]] && ! echo "$JOURNAL_OUTPUT" | grep -q "No entries"; then
-        echo "  Journal logs:" >&2
-        echo "$JOURNAL_OUTPUT" | sed 's/^/    /' >&2
-    else
-        echo "  No journal entries found for this service." >&2
-        echo "  This usually means the process never started." >&2
-        echo "  Check if basic.target is active: systemctl is-active basic.target" >&2
-    fi
-    echo "" >&2
-    echo "  Diagnostics:" >&2
-    echo "    basic.target: $(systemctl is-active basic.target 2>/dev/null || echo 'not active')" >&2
-    echo "    system state: $(systemctl is-system-running 2>/dev/null || echo 'unknown')" >&2
-    echo "" >&2
-    echo "  Check logs with: journalctl -u agent@${USERNAME}.service" >&2
+# Verify the process is running
+sleep 3
+if kill -0 "$AGENT_PID_VAL" 2>/dev/null; then
+    echo "  -> Agent process started (PID $AGENT_PID_VAL, log: $AGENT_LOG)"
+else
+    echo "  Error: Agent process died immediately." >&2
+    echo "  Log output:" >&2
+    tail -20 "$AGENT_LOG" 2>/dev/null | sed 's/^/    /' >&2
     exit 1
 fi
-
-echo "  -> agent@${USERNAME}.service enabled and active"
 
 echo "Agent '$USERNAME' is ready."

@@ -39,6 +39,13 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `send-mail.sh` | Send mail to an agent or alias | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
 | `sync-aliases.sh` | Regenerate mail aliases | `sync-aliases.sh` |
 | `snapshot-agents.sh` | Snapshot agent state (host-only) | `snapshot-agents.sh <command> [args]` |
+| `load-preset.sh` | Compile a preset JSON into agents + tasks | `load-preset.sh <file.json> [--dry-run] [--skip-existing]` |
+| `task.sh` | DAG task board management | `task.sh <add\|list\|ready\|update\|get\|graph> [args]` |
+| `artifact.sh` | Shared artifact registry | `artifact.sh <register\|list\|get\|read> [args]` |
+| `swarm-orchestrator.sh` | Central DAG coordinator | Automatic — runs as systemd service |
+| `stop-swarm.sh` | Cascading cancellation | `stop-swarm.sh [--reason <text>]` |
+| `check-health.sh` | Heartbeat-based health monitoring | `check-health.sh` |
+| `swarm-status.sh` | Result aggregation | `swarm-status.sh` |
 | `agent-loop.mjs` | Single agentic work cycle (Agent SDK) | Automatic — called by `run-agent.sh` |
 | `run-agent.sh` | Agent entrypoint (run by systemd) | Automatic — not run manually |
 | `agent-manager.sh` | Boot-time service reconciliation | Automatic — runs at container start |
@@ -376,6 +383,117 @@ make snapshot-log
 
 ---
 
+## load-preset.sh
+
+Compiles a declarative preset JSON file into a running swarm. Reads the preset and translates it into sequential calls to `create-agent.sh`, `task.sh add`, and `send-mail.sh`. The compiler is a thin translation layer — all intelligence lives in the preset file, not in the script.
+
+**Usage:**
+```bash
+# Inside the container
+load-preset.sh <file.json> [--dry-run] [--skip-existing]
+
+# From the host via Make
+make load-preset FILE=presets/bug-triage.json [DRY_RUN=1] [SKIP_EXISTING=1]
+```
+
+**Arguments:**
+- `<file.json>` (required) — Path to the preset JSON file.
+- `--dry-run` (optional) — Show what would happen without executing. Prints the commands that would be run.
+- `--skip-existing` (optional) — Skip agent creation if the agent user already exists (useful for re-loading presets).
+
+**Compilation phases:**
+1. **Validate** — Parses JSON, checks required fields, validates DAG (no cycles, valid references)
+2. **Create agents** — Calls `create-agent.sh` for each agent in the preset
+3. **Create tasks** — Calls `task.sh add` for each task, wiring up `blocked_by` dependencies and owners
+4. **Send mail** — Calls `send-mail.sh` for each kickoff message
+5. **Save state** — Records the loaded preset for reference
+
+**Variable substitution:** Presets use `${VAR}` placeholders in task descriptions and mail bodies. These are replaced with environment variables at load time:
+```bash
+BUG_TITLE="Login timeout" BUG_DESCRIPTION="Users report 30s hangs" \
+  load-preset.sh presets/bug-triage.json
+```
+
+**Preset JSON format:**
+```json
+{
+  "name": "preset-name",
+  "description": "What this preset does",
+  "agents": [
+    { "name": "alice", "persona": "coder", "instructions": "optional custom instructions" }
+  ],
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Task title",
+      "description": "Detailed description with ${VARIABLES}",
+      "owner": "alice",
+      "blocked_by": []
+    }
+  ],
+  "mail": [
+    { "to": "alice", "subject": "Kickoff", "body": "Your task is ready" }
+  ]
+}
+```
+
+**Examples:**
+```bash
+# Preview what a preset will do
+make load-preset FILE=presets/feature-build.json DRY_RUN=1
+
+# Load a preset with variables
+FEATURE_NAME="Dark mode" REPO_PATH="/home/shared/webapp" \
+  make load-preset FILE=presets/feature-build.json
+
+# Re-load a preset without recreating existing agents
+make load-preset FILE=presets/bug-triage.json SKIP_EXISTING=1
+```
+
+---
+
+## task.sh
+
+Manages the shared DAG task board at `/home/shared/tasks.jsonl`. The task board is append-only JSONL — the last entry per task ID represents the current state.
+
+**Usage:**
+```bash
+task.sh <command> [args]
+```
+
+**Commands:**
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `add` | Add a new task | `task.sh add "Build engine" --owner alice --blocked-by task-1` |
+| `list` | List all tasks | `task.sh list [--owner alice] [--status pending]` |
+| `ready` | List tasks ready to start (no unfinished blockers) | `task.sh ready` |
+| `update` | Update a task's status | `task.sh update task-abc completed` |
+| `get` | Get details for a task | `task.sh get task-abc` |
+| `graph` | Show the task dependency graph | `task.sh graph` |
+
+---
+
+## artifact.sh
+
+Manages the shared artifact registry for inter-agent file sharing. Artifacts are files in `/home/shared/` that agents can produce and consume.
+
+**Usage:**
+```bash
+artifact.sh <command> [args]
+```
+
+**Commands:**
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `register` | Register a shared artifact | `artifact.sh register reports/output.csv` |
+| `list` | List all registered artifacts | `artifact.sh list` |
+| `get` | Get metadata for an artifact | `artifact.sh get reports/output.csv` |
+| `read` | Read artifact contents | `artifact.sh read reports/output.csv` |
+
+---
+
 ## agent-loop.mjs
 
 A Node.js script that performs a single agentic work cycle using the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`). It is called by `run-agent.sh` on each cycle and is **not intended to be run manually**.
@@ -547,6 +665,14 @@ make get-api-keys NAME=foo                              # Show API keys (masked)
 make remove-api-key NAME=foo KEY=OPENAI_API_KEY         # Remove specific key
 make clear-api-keys NAME=foo                            # Remove all keys
 make list-providers                                     # List known provider names
+```
+
+**Presets:**
+```bash
+make list-presets                                       # List available workflow presets
+make load-preset FILE=presets/bug-triage.json           # Load a preset (create agents + tasks + mail)
+make load-preset FILE=presets/bug-triage.json DRY_RUN=1 # Preview without executing
+make load-preset FILE=presets/feature-build.json SKIP_EXISTING=1  # Skip existing agents
 ```
 
 **Snapshots (host-side, container not required):**

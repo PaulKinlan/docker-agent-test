@@ -1,0 +1,56 @@
+{
+  "name": "security-hardening",
+  "description": "Security audit, threat modeling, remediation, and hardening report",
+
+  "agents": [
+    { "name": "scout", "persona": "security" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "arch", "persona": "architect" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "scan",
+      "subject": "Comprehensive security scan",
+      "owner": "scout",
+      "description": "Run a comprehensive security scan of the codebase at ${REPO_PATH:-/home/shared/inputs/repo}. Scope: ${SCAN_SCOPE:-full}. Systematically check for: (1) OWASP Top 10 vulnerabilities (injection, broken auth, sensitive data exposure, XXE, broken access control, misconfig, XSS, insecure deserialization, known vulnerable components, insufficient logging), (2) hardcoded secrets, API keys, passwords, tokens, (3) SQL/NoSQL injection points, (4) command injection risks, (5) authentication and authorization flaws, (6) insecure cryptographic practices, (7) dependency vulnerabilities, (8) insecure file operations, (9) CORS and CSRF issues, (10) information leakage. Write findings to /home/shared/scan-results.md with each finding having: severity (Critical/High/Medium/Low/Info), category, file location, description, and evidence. Register /home/shared/scan-results.md as an artifact."
+    },
+    {
+      "id": "threat-model",
+      "subject": "Threat model and prioritization",
+      "owner": "arch",
+      "description": "Read /home/shared/scan-results.md and examine the codebase at ${REPO_PATH:-/home/shared/inputs/repo}. Produce a threat model at /home/shared/threat-model.md containing: (1) attack surface analysis identifying all entry points (APIs, user inputs, file uploads, external integrations), (2) trust boundaries and data flow diagram, (3) threat actors and their capabilities, (4) STRIDE analysis for key components, (5) prioritized list of all findings from the scan with exploitation likelihood and business impact, (6) recommended remediation order (fix Critical and High first, then Medium). Register /home/shared/threat-model.md as an artifact.",
+      "blocked_by": ["scan"]
+    },
+    {
+      "id": "fix-critical",
+      "subject": "Fix critical and high severity issues",
+      "owner": "dev",
+      "description": "Read /home/shared/threat-model.md for the prioritized findings. Fix all Critical and High severity issues in ${REPO_PATH:-/home/shared/inputs/repo}. For each fix: apply the principle of least privilege, use parameterized queries, sanitize inputs, implement proper auth checks, remove hardcoded secrets, and follow secure coding guidelines. Create the directory /home/shared/fixes/ if it does not exist. Write a detailed change log to /home/shared/fixes/critical-fixes.md documenting: each vulnerability addressed, the fix applied, files modified, and any remaining risk. Register /home/shared/fixes/critical-fixes.md as an artifact.",
+      "blocked_by": ["threat-model"]
+    },
+    {
+      "id": "fix-config",
+      "subject": "Fix configuration and medium severity issues",
+      "owner": "dev",
+      "description": "Read /home/shared/threat-model.md for the prioritized findings. Fix all Medium severity issues plus configuration and dependency problems in ${REPO_PATH:-/home/shared/inputs/repo}. This includes: (1) updating vulnerable dependencies, (2) fixing security misconfigurations (headers, CORS, TLS settings), (3) adding missing security headers, (4) improving logging and monitoring, (5) hardening build and deployment configs. Create the directory /home/shared/fixes/ if it does not exist. Write a detailed change log to /home/shared/fixes/config-fixes.md documenting each change with rationale. Register /home/shared/fixes/config-fixes.md as an artifact.",
+      "blocked_by": ["threat-model"]
+    },
+    {
+      "id": "hardening-report",
+      "subject": "Write security hardening report",
+      "owner": "doc",
+      "description": "Read all artifacts: /home/shared/scan-results.md, /home/shared/threat-model.md, /home/shared/fixes/critical-fixes.md, and /home/shared/fixes/config-fixes.md. Write a comprehensive security hardening report to /home/shared/outputs/hardening-report.md containing: (1) executive summary with overall security posture before and after, (2) methodology used for the audit, (3) complete findings table with severity, status (fixed/remaining/accepted risk), (4) detailed description of all fixes applied, (5) remaining risks and accepted risk rationale, (6) recommendations for ongoing security practices, (7) suggested security monitoring and alerting, (8) timeline for addressing remaining items. Register /home/shared/outputs/hardening-report.md as an artifact.",
+      "blocked_by": ["fix-critical", "fix-config"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "scout",
+      "subject": "Swarm started: security-hardening",
+      "body": "You are leading a security audit and hardening pipeline. Your first task (scan) is ready on the task board.\n\nTarget: ${REPO_PATH:-/home/shared/inputs/repo}\nScope: ${SCAN_SCOPE:-full}\n\nRun a comprehensive security scan of the codebase. Check for OWASP Top 10, hardcoded secrets, injection risks, auth issues, and dependency vulnerabilities. Write findings with severity ratings to /home/shared/scan-results.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

@@ -23,6 +23,10 @@ mail/*
 *.tmp
 *.temp
 
+# Shared workspace runtime data (task board, artifacts, preset state)
+shared/*
+!shared/.gitkeep
+
 # OS
 .DS_Store
 

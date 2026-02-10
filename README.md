@@ -32,6 +32,20 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── api-keys/          # API key configuration (copied to /etc/agent-api-keys)
 │   │   ├── global.env.template  # Template for global API keys
 │   │   └── .gitignore           # Prevents committing actual keys
+│   ├── personas/          # Agent persona definitions (copied to /etc/agent-personas)
+│   │   ├── base.md              # Base persona (applied to all agents)
+│   │   ├── coder.md             # Software development specialist
+│   │   ├── researcher.md        # Research and information gathering
+│   │   └── ...                  # 11 more specialist personas
+│   ├── skills/            # Skill packs (copied to /etc/agent-skills)
+│   │   ├── _universal/          # Skills installed to every agent
+│   │   │   ├── task-workflow/   # Check ready tasks, claim, work, complete
+│   │   │   ├── artifact-sharing/# Produce/consume shared files
+│   │   │   ├── report-results/  # Write good result summaries
+│   │   │   └── agent-communication/ # Discover team, send mail, check inbox
+│   │   ├── coder/               # Skills for coder persona
+│   │   ├── researcher/          # Skills for researcher persona
+│   │   └── ...                  # 11 more persona skill packs
 │   ├── smtpd/             # OpenSMTPD configuration (copied to /etc/smtpd)
 │   │   └── aliases.static       # Custom per-agent mail aliases
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
@@ -48,6 +62,17 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │       ├── agent@.service          # Per-agent service template
 │       ├── agent-manager.service   # Boot-time reconciliation service
 │       └── api-keys-sync.service   # Boot-time API key sync service
+├── presets/               # Workflow preset library (declarative swarm configs)
+│   ├── codebase-audit.json     # Security + quality audit
+│   ├── content-pipeline.json   # Content creation pipeline
+│   ├── bug-triage.json         # Bug investigation → fix → verify → postmortem
+│   ├── feature-build.json      # Spec → design → implement → review → docs
+│   ├── security-hardening.json # Scan → threat model → parallel fixes → report
+│   ├── api-design.json         # Requirements → design → implement → test → docs
+│   ├── data-pipeline.json      # Ingest → validate → analyze → report
+│   ├── project-kickoff.json    # Design → scaffold+CI → tests → readme
+│   ├── migration-plan.json     # Assess → research → migrate → test → guide
+│   └── incident-response.json  # Triage → diagnose → hotfix → verify → postmortem
 ├── shared/                # Shared artifacts directory (mounted as /home/shared)
 ├── tui/                   # Interactive TUI (Node.js + Ink, host-side only)
 │   ├── package.json       # Dependencies (ink, react)
@@ -66,6 +91,13 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── send-mail.sh       # Send mail to an agent user or alias
     ├── sync-aliases.sh    # Regenerate mail aliases from agents group
     ├── snapshot-agents.sh # Snapshot agent state (host-only)
+    ├── load-preset.sh     # Compile a preset JSON into running agents + tasks
+    ├── task.sh            # DAG task board (add/list/ready/update/get/graph)
+    ├── artifact.sh        # Shared artifact registry (register/list/get/read)
+    ├── swarm-orchestrator.sh  # Central DAG coordinator
+    ├── stop-swarm.sh      # Cascading cancellation of all agents
+    ├── check-health.sh    # Heartbeat-based health monitoring
+    ├── swarm-status.sh    # Result aggregation (tasks + health + costs)
     ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
@@ -234,6 +266,95 @@ Each agent runs as its own systemd service (`agent@<username>.service`) which ex
 
 At container boot, `agent-manager.sh` automatically reconciles all users in the `agents` group, ensuring their services are enabled and started.
 
+### Workflow Presets
+
+Presets are declarative JSON files that describe a complete swarm configuration: agents, a task DAG, and optional kickoff messages. The `load-preset.sh` compiler reads a preset and translates it into calls to the existing shell primitives (`create-agent.sh`, `task.sh add`, `send-mail.sh`). The compiler is a thin translation layer with zero business logic.
+
+**List available presets:**
+```bash
+make list-presets
+```
+
+**Load a preset:**
+```bash
+# Dry run (shows what would happen without executing)
+make load-preset FILE=presets/bug-triage.json DRY_RUN=1
+
+# Load for real (creates agents, tasks, sends kickoff mail)
+make load-preset FILE=presets/bug-triage.json
+
+# Skip agents that already exist
+make load-preset FILE=presets/feature-build.json SKIP_EXISTING=1
+```
+
+**Variable substitution:** Presets use `${VAR}` placeholders in task descriptions and mail bodies. Set them as environment variables before loading:
+```bash
+BUG_TITLE="Login timeout" BUG_DESCRIPTION="Users report 30s hangs" \
+  make load-preset FILE=presets/bug-triage.json
+```
+
+**Shipped presets (10):**
+
+| Preset | Agents | DAG Shape | Problem Solved |
+|--------|--------|-----------|----------------|
+| `codebase-audit` | 5 | fan-out | Security + quality audit |
+| `content-pipeline` | 4 | linear | Content creation pipeline |
+| `bug-triage` | 4 | linear | Bug investigation → fix → verify → postmortem |
+| `feature-build` | 5 | linear + revision | Spec → design → implement → review → docs |
+| `security-hardening` | 4 | fan-out merge | Scan → threat model → parallel fixes → report |
+| `api-design` | 5 | linear | Requirements → design → implement → test → docs |
+| `data-pipeline` | 4 | fan-out merge | Ingest → validate → analyze → report |
+| `project-kickoff` | 4 | fan-out merge | Design → scaffold+CI → tests → readme |
+| `migration-plan` | 5 | fan-out merge | Assess → research → migrate → test → guide |
+| `incident-response` | 4 | diamond | Triage → diagnose → hotfix → verify → postmortem |
+
+**TUI commands:**
+```
+list-presets                          # List all presets with descriptions
+load-preset presets/bug-triage.json   # Load a preset
+preset-info presets/bug-triage.json   # Show agents, tasks, and variables
+```
+
+### Skill Packs
+
+Skill packs give agents procedural knowledge from day one. Each skill is a `SKILL.md` file in the Claude Code format (YAML frontmatter + markdown instructions) containing real, runnable commands and specific procedures.
+
+**How it works:**
+- `config/skills/_universal/` — installed to every agent's `~/.claude/skills/`
+- `config/skills/<persona>/` — installed only when the agent's persona matches (e.g., coder agents get `config/skills/coder/`)
+- Skills are **copied, not symlinked** — agents can extend or modify skills at runtime
+- Existing skills are **never overwritten** — preserves agent customizations on re-runs
+
+**Universal skills (4)** — every agent gets these:
+- `task-workflow` — Check ready tasks, claim, work, complete cycle
+- `artifact-sharing` — Produce and consume shared files via `artifact.sh`
+- `report-results` — Write structured result summaries
+- `agent-communication` — Discover teammates, send/check mail
+
+**Persona skills (23)** — installed based on persona:
+- **coder**: project-setup, test-and-validate, focused-pr, code-refactor
+- **researcher**: structured-research, source-evaluation
+- **architect**: system-design, codebase-survey
+- **security**: vulnerability-scan, dependency-audit
+- **qa**: test-plan, regression-check
+- **writer**: technical-writing, changelog-generation
+- **editor**: editorial-review
+- **reviewer**: code-review
+- **planner**: task-decomposition
+- **analyst**: data-analysis, metrics-report
+- **devops**: dockerfile-authoring, ci-pipeline
+- **manager**: delegation-workflow
+- **ops**: triage-routing
+
+**Verification:**
+```bash
+# After creating a coder agent:
+make agent-shell NAME=alice
+ls ~/.claude/skills/
+# → task-workflow/ artifact-sharing/ report-results/ agent-communication/
+#   project-setup/ test-and-validate/ focused-pr/ code-refactor/
+```
+
 ### Interactive TUI
 
 An interactive command prompt (like Claude Code) for managing the system. Built with Node.js and Ink.
@@ -285,6 +406,9 @@ make tui           # or: node cli.mjs
 | `artifact-list` | List shared artifacts |
 | `artifact-register reports/out.csv` | Register a shared artifact |
 | `artifact-get reports/out.csv` | Get metadata for an artifact |
+| `list-presets` | List available workflow presets |
+| `load-preset presets/bug-triage.json` | Load a workflow preset |
+| `preset-info presets/bug-triage.json` | Show preset details (agents, tasks, variables) |
 | `help` | Show all commands |
 
 Tab completion is available for commands, agent names, and persona names. Use up/down arrows to navigate command history.

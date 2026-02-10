@@ -2,20 +2,38 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getContainerName } from "./container.mjs";
-import { getPersonaNames } from "./completions.mjs";
+import { getPersonaNames, getPresetFiles } from "./completions.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..", "..");
 
 // Commands that require a running container
 const NEEDS_CONTAINER = new Set([
-  "list", "create", "remove", "update", "logs", "shell",
-  "set-key", "get-keys", "remove-key", "clear-keys", "providers",
-  "mail", "sync-aliases",
+  "list",
+  "create",
+  "remove",
+  "update",
+  "logs",
+  "shell",
+  "set-key",
+  "get-keys",
+  "remove-key",
+  "clear-keys",
+  "providers",
+  "mail",
+  "sync-aliases",
   "soft-reset",
-  "swarm-status", "swarm-stop", "health",
-  "task-add", "task-list", "task-ready", "task-update", "task-graph",
-  "artifact-list", "artifact-register", "artifact-get",
+  "swarm-status",
+  "swarm-stop",
+  "health",
+  "task-add",
+  "task-list",
+  "task-ready",
+  "task-update",
+  "task-graph",
+  "artifact-list",
+  "artifact-register",
+  "artifact-get",
 ]);
 
 const COMMANDS = {
@@ -43,7 +61,10 @@ const COMMANDS = {
   "container-logs": {
     description: "View container logs",
     category: "Container",
-    toSpawn: () => ({ cmd: "docker-compose", args: ["logs", "-f", "--timestamps"] }),
+    toSpawn: () => ({
+      cmd: "docker-compose",
+      args: ["logs", "-f", "--timestamps"],
+    }),
   },
   clean: {
     description: "Stop container, remove image",
@@ -69,7 +90,8 @@ const COMMANDS = {
   },
   create: {
     description: "Create a new agent",
-    usage: "create <name> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER=key>]",
+    usage:
+      "create <name> [--persona <name>] [--instructions <text>] [--api-key <PROVIDER=key>]",
     category: "Agents",
     minArgs: 1,
     toSpawn: (args) => ({ cmd: "./scripts/create-agent.sh", args }),
@@ -95,7 +117,16 @@ const COMMANDS = {
     minArgs: 1,
     toSpawn: (args) => ({
       cmd: "docker-compose",
-      args: ["exec", "-T", getContainerName(), "journalctl", "-u", `agent@${args[0]}.service`, "-f", "--no-pager"],
+      args: [
+        "exec",
+        "-T",
+        getContainerName(),
+        "journalctl",
+        "-u",
+        `agent@${args[0]}.service`,
+        "-f",
+        "--no-pager",
+      ],
     }),
   },
   shell: {
@@ -266,7 +297,8 @@ const COMMANDS = {
   },
   "task-add": {
     description: "Add a task to the shared board",
-    usage: 'task-add "<subject>" <owner> [--description "<text>"] [--blocked-by <task-id,...>]',
+    usage:
+      'task-add "<subject>" <owner> [--description "<text>"] [--blocked-by <task-id,...>]',
     category: "Swarm",
     minArgs: 2,
     toSpawn: (args) => {
@@ -309,21 +341,51 @@ const COMMANDS = {
     description: "List shared artifacts",
     usage: "artifact-list [--producer <name>]",
     category: "Swarm",
-    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["list", ...args] }),
+    toSpawn: (args) => ({
+      cmd: "./scripts/artifact.sh",
+      args: ["list", ...args],
+    }),
   },
   "artifact-register": {
     description: "Register a shared artifact",
     usage: 'artifact-register <path> [--description "<text>"]',
     category: "Swarm",
     minArgs: 1,
-    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["register", ...args] }),
+    toSpawn: (args) => ({
+      cmd: "./scripts/artifact.sh",
+      args: ["register", ...args],
+    }),
   },
   "artifact-get": {
     description: "Get metadata for an artifact",
     usage: "artifact-get <path>",
     category: "Swarm",
     minArgs: 1,
-    toSpawn: (args) => ({ cmd: "./scripts/artifact.sh", args: ["get", ...args] }),
+    toSpawn: (args) => ({
+      cmd: "./scripts/artifact.sh",
+      args: ["get", ...args],
+    }),
+  },
+
+  // --- Presets ---
+  "list-presets": {
+    description: "List available workflow presets",
+    category: "Presets",
+    builtin: true,
+  },
+  "load-preset": {
+    description: "Load a workflow preset",
+    usage: "load-preset <file> [--dry-run] [--skip-existing]",
+    category: "Presets",
+    minArgs: 1,
+    toSpawn: (args) => ({ cmd: "./scripts/load-preset.sh", args }),
+  },
+  "preset-info": {
+    description: "Show details of a preset file",
+    usage: "preset-info <file>",
+    category: "Presets",
+    minArgs: 1,
+    builtin: true,
   },
 
   // --- Meta ---
@@ -378,7 +440,9 @@ export function parse(input) {
   const def = COMMANDS[name];
 
   if (!def) {
-    return { error: `Unknown command: '${name}'. Type 'help' for available commands.` };
+    return {
+      error: `Unknown command: '${name}'. Type 'help' for available commands.`,
+    };
   }
 
   if (def.minArgs && args.length < def.minArgs) {
@@ -418,13 +482,20 @@ export function getHelpLines() {
 
 export function getPersonaLines() {
   const names = getPersonaNames();
-  const lines = [{ text: "  Available personas:", type: "info" }, { text: "", type: "stdout" }];
+  const lines = [
+    { text: "  Available personas:", type: "info" },
+    { text: "", type: "stdout" },
+  ];
   for (const name of names) {
-    const label = name === "base" ? `  ${name} (applied to all agents)` : `  ${name}`;
+    const label =
+      name === "base" ? `  ${name} (applied to all agents)` : `  ${name}`;
     lines.push({ text: `    ${label}`, type: "stdout" });
   }
   lines.push({ text: "", type: "stdout" });
-  lines.push({ text: '  Usage: create <name> --persona <name>', type: "stdout" });
+  lines.push({
+    text: "  Usage: create <name> --persona <name>",
+    type: "stdout",
+  });
   return lines;
 }
 
@@ -439,6 +510,112 @@ export function getReadMailLines(agentName) {
   } catch {
     return [{ text: `  No mailbox found for ${agentName}.`, type: "info" }];
   }
+}
+
+export function getListPresetsLines() {
+  const files = getPresetFiles();
+  if (files.length === 0) {
+    return [
+      { text: "  No presets found in presets/", type: "info" },
+      { text: "", type: "stdout" },
+      {
+        text: "  Create a JSON file in presets/ to get started.",
+        type: "stdout",
+      },
+    ];
+  }
+  const lines = [
+    { text: "  Available presets:", type: "info" },
+    { text: "", type: "stdout" },
+  ];
+  for (const file of files) {
+    const filePath = resolve(PROJECT_ROOT, file);
+    try {
+      const data = JSON.parse(readFileSync(filePath, "utf-8"));
+      const name = file.replace("presets/", "").replace(".json", "");
+      const desc = data.description || "No description";
+      lines.push({ text: `    ${name.padEnd(25)} ${desc}`, type: "stdout" });
+    } catch {
+      const name = file.replace("presets/", "").replace(".json", "");
+      lines.push({
+        text: `    ${name.padEnd(25)} (error reading file)`,
+        type: "stderr",
+      });
+    }
+  }
+  lines.push({ text: "", type: "stdout" });
+  lines.push({
+    text: "  Usage: load-preset <file> [--dry-run] [--skip-existing]",
+    type: "stdout",
+  });
+  return lines;
+}
+
+export function getPresetInfoLines(file) {
+  const filePath = resolve(PROJECT_ROOT, file);
+  let data;
+  try {
+    data = JSON.parse(readFileSync(filePath, "utf-8"));
+  } catch (err) {
+    return [
+      { text: `  Error reading ${file}: ${err.message}`, type: "stderr" },
+    ];
+  }
+
+  const lines = [];
+  const name = file.replace("presets/", "").replace(".json", "");
+  lines.push({ text: `  Preset: ${name}`, type: "info" });
+  lines.push({
+    text: `  Description: ${data.description || "No description"}`,
+    type: "stdout",
+  });
+  lines.push({ text: "", type: "stdout" });
+
+  // Agents
+  if (data.agents && data.agents.length > 0) {
+    lines.push({ text: "  Agents:", type: "info" });
+    for (const agent of data.agents) {
+      const persona = agent.persona ? ` (persona: ${agent.persona})` : "";
+      lines.push({ text: `    ${agent.name}${persona}`, type: "stdout" });
+    }
+    lines.push({ text: "", type: "stdout" });
+  }
+
+  // Task DAG
+  if (data.tasks && data.tasks.length > 0) {
+    lines.push({ text: "  Tasks:", type: "info" });
+    for (const task of data.tasks) {
+      const owner = task.owner ? ` [${task.owner}]` : "";
+      const blocked =
+        task.blocked_by && task.blocked_by.length > 0
+          ? ` (blocked by: ${task.blocked_by.join(", ")})`
+          : "";
+      const id = task.id ? `${task.id}: ` : "";
+      lines.push({
+        text: `    ${id}${task.subject}${owner}${blocked}`,
+        type: "stdout",
+      });
+    }
+    lines.push({ text: "", type: "stdout" });
+  }
+
+  // Detect ${VAR} placeholders
+  const raw = readFileSync(filePath, "utf-8");
+  const varPattern = /\$\{([^}]+)\}/g;
+  const vars = new Set();
+  let match;
+  while ((match = varPattern.exec(raw)) !== null) {
+    vars.add(match[1]);
+  }
+  if (vars.size > 0) {
+    lines.push({ text: "  Placeholders:", type: "info" });
+    for (const v of vars) {
+      lines.push({ text: `    \${${v}}`, type: "stdout" });
+    }
+    lines.push({ text: "", type: "stdout" });
+  }
+
+  return lines;
 }
 
 export { COMMANDS };

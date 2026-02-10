@@ -6,27 +6,73 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..", "..");
 
 const COMMAND_NAMES = [
-  "build", "up", "down", "restart", "container-logs", "clean", "reset", "status",
-  "list", "create", "remove", "update", "logs", "shell", "personas", "soft-reset",
-  "set-key", "get-keys", "remove-key", "clear-keys", "providers",
-  "mail", "read-mail", "sync-aliases",
-  "snapshot-init", "snapshot", "snapshot-log", "snapshot-diff", "snapshot-status",
-  "swarm-status", "swarm-stop", "health",
-  "task-add", "task-list", "task-ready", "task-update", "task-graph",
-  "artifact-list", "artifact-register", "artifact-get",
-  "help", "clear", "exit", "quit",
+  "build",
+  "up",
+  "down",
+  "restart",
+  "container-logs",
+  "clean",
+  "reset",
+  "status",
+  "list",
+  "create",
+  "remove",
+  "update",
+  "logs",
+  "shell",
+  "personas",
+  "soft-reset",
+  "set-key",
+  "get-keys",
+  "remove-key",
+  "clear-keys",
+  "providers",
+  "mail",
+  "read-mail",
+  "sync-aliases",
+  "snapshot-init",
+  "snapshot",
+  "snapshot-log",
+  "snapshot-diff",
+  "snapshot-status",
+  "swarm-status",
+  "swarm-stop",
+  "health",
+  "task-add",
+  "task-list",
+  "task-ready",
+  "task-update",
+  "task-graph",
+  "artifact-list",
+  "artifact-register",
+  "artifact-get",
+  "list-presets",
+  "load-preset",
+  "preset-info",
+  "help",
+  "clear",
+  "exit",
+  "quit",
 ];
 
 const AGENT_NAME_COMMANDS = new Set([
-  "remove", "update", "logs", "shell",
-  "set-key", "get-keys", "remove-key", "clear-keys",
-  "mail", "read-mail",
+  "remove",
+  "update",
+  "logs",
+  "shell",
+  "set-key",
+  "get-keys",
+  "remove-key",
+  "clear-keys",
+  "mail",
+  "read-mail",
 ]);
 
 export function getAgentNames() {
   try {
-    return readdirSync(resolve(PROJECT_ROOT, "home"))
-      .filter((f) => f !== ".gitkeep" && !f.startsWith("."));
+    return readdirSync(resolve(PROJECT_ROOT, "home")).filter(
+      (f) => f !== ".gitkeep" && !f.startsWith("."),
+    );
   } catch {
     return [];
   }
@@ -37,6 +83,18 @@ export function getPersonaNames() {
     return readdirSync(resolve(PROJECT_ROOT, "config", "personas"))
       .filter((f) => f.endsWith(".md"))
       .map((f) => f.replace(".md", ""));
+  } catch {
+    return [];
+  }
+}
+
+const PRESET_FILE_COMMANDS = new Set(["load-preset", "preset-info"]);
+
+export function getPresetFiles() {
+  try {
+    return readdirSync(resolve(PROJECT_ROOT, "presets"))
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => `presets/${f}`);
   } catch {
     return [];
   }
@@ -63,6 +121,11 @@ export function complete(input) {
   // Complete agent name (second argument for most commands)
   if (parts.length === 2 && AGENT_NAME_COMMANDS.has(cmd)) {
     return getAgentNames().filter((n) => n.startsWith(lastPart));
+  }
+
+  // Complete preset file path (second argument for preset commands)
+  if (parts.length === 2 && PRESET_FILE_COMMANDS.has(cmd)) {
+    return getPresetFiles().filter((f) => f.startsWith(lastPart));
   }
 
   return [];

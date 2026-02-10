@@ -2,7 +2,10 @@ FROM archlinux:latest
 
 # Update the system and install dependencies
 # Note: sudo is pulled in by base-devel but agents are explicitly denied sudo access
-RUN pacman -Syu --noconfirm && \
+# Disable seccomp sandbox for pacman — it conflicts with Docker BuildKit's security profile
+RUN sed -i 's/^#\?DisableSandbox.*/DisableSandbox/' /etc/pacman.conf || true && \
+    echo 'DisableSandbox' >> /etc/pacman.conf && \
+    pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
     base-devel \
     git \
@@ -54,6 +57,9 @@ RUN mkdir -p "$NVM_DIR" && \
 # Copy persona definitions (used by create-agent.sh to build agents.md)
 COPY config/personas/ /etc/agent-personas/
 
+# Copy skill packs (used by create-agent.sh to populate ~/.claude/skills/)
+COPY config/skills/ /etc/agent-skills/
+
 # Copy /etc/skel template (applied to every new user created with useradd -m)
 COPY config/skel/ /etc/skel/
 
@@ -65,7 +71,7 @@ RUN chmod +x /etc/profile.d/*.sh
 # If global.env exists, rename to .static so it can be merged with env vars at boot
 COPY config/api-keys/ /etc/agent-api-keys/
 RUN if [ -f /etc/agent-api-keys/global.env ]; then \
-        mv /etc/agent-api-keys/global.env /etc/agent-api-keys/global.env.static; \
+    mv /etc/agent-api-keys/global.env /etc/agent-api-keys/global.env.static; \
     fi && \
     chmod 755 /etc/agent-api-keys
 

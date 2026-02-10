@@ -1,0 +1,56 @@
+{
+  "name": "bug-triage",
+  "description": "Bug report investigation, reproduction, fix, verification, and postmortem",
+
+  "agents": [
+    { "name": "scout", "persona": "ops" },
+    { "name": "dev", "persona": "coder" },
+    { "name": "tester", "persona": "qa" },
+    { "name": "doc", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "triage",
+      "subject": "Triage bug report: ${BUG_TITLE:-Bug Report}",
+      "owner": "scout",
+      "description": "Read the bug report from /home/shared/inputs/bug-report.md. If that file does not exist, use the following description: ${BUG_DESCRIPTION:-See /home/shared/inputs/bug-report.md}. Classify the bug severity (critical, high, medium, low). Identify the affected component, module, or subsystem. Note any environment details, version info, or error messages. Write a structured triage summary to /home/shared/triage.md containing: severity classification, affected component, summary of symptoms, initial hypothesis for root cause, and recommended investigation steps. Register /home/shared/triage.md as an artifact."
+    },
+    {
+      "id": "reproduce",
+      "subject": "Reproduce the bug",
+      "owner": "tester",
+      "description": "Read /home/shared/triage.md to understand the reported bug, its severity, and the affected component. Attempt to reproduce the bug by examining the codebase at /home/shared/inputs/repo/ and constructing minimal reproduction steps. Document: (1) exact steps to reproduce, (2) expected behavior, (3) actual behavior observed, (4) any error messages or stack traces, (5) environment conditions required. Write findings to /home/shared/reproduction.md. If the bug cannot be reproduced, document what was tried and possible reasons. Register /home/shared/reproduction.md as an artifact.",
+      "blocked_by": ["triage"]
+    },
+    {
+      "id": "fix",
+      "subject": "Implement bug fix",
+      "owner": "dev",
+      "description": "Read /home/shared/reproduction.md to understand the confirmed reproduction steps and root cause indicators. Examine the relevant source code in /home/shared/inputs/repo/. Implement a fix that addresses the root cause without introducing regressions. Make changes directly in /home/shared/inputs/repo/. Write a summary of all changes to /home/shared/fix-summary.md including: files modified, description of each change, rationale for the approach chosen, any edge cases considered, and potential side effects. Register /home/shared/fix-summary.md as an artifact.",
+      "blocked_by": ["reproduce"]
+    },
+    {
+      "id": "verify",
+      "subject": "Verify fix and check for regressions",
+      "owner": "tester",
+      "description": "Read /home/shared/reproduction.md for the original reproduction steps and /home/shared/fix-summary.md for what was changed. Re-run the reproduction steps against the fixed code in /home/shared/inputs/repo/ to confirm the bug is resolved. Check for regressions by testing related functionality and edge cases. Document: (1) reproduction steps re-tested and their results, (2) regression tests performed, (3) pass/fail status for each test, (4) overall verification verdict. Write results to /home/shared/verification.md. Register as an artifact.",
+      "blocked_by": ["fix"]
+    },
+    {
+      "id": "write-postmortem",
+      "subject": "Write bug postmortem",
+      "owner": "doc",
+      "description": "Read all artifacts: /home/shared/triage.md, /home/shared/reproduction.md, /home/shared/fix-summary.md, and /home/shared/verification.md. Synthesize a comprehensive postmortem report and write it to /home/shared/outputs/postmortem.md. The postmortem must include: (1) incident timeline from report to resolution, (2) root cause analysis, (3) impact assessment, (4) detailed description of the fix, (5) verification results, (6) lessons learned, (7) preventive measures and recommendations to avoid similar bugs. Register /home/shared/outputs/postmortem.md as an artifact.",
+      "blocked_by": ["verify"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "scout",
+      "subject": "Swarm started: bug-triage",
+      "body": "You are leading a bug triage and fix pipeline. Your first task (triage) is ready on the task board.\n\nBug: ${BUG_TITLE:-Bug Report}\nDescription: ${BUG_DESCRIPTION:-See /home/shared/inputs/bug-report.md}\n\nRead the bug report from /home/shared/inputs/bug-report.md if available, otherwise use the description above. Classify severity, identify the affected component, and write your triage summary to /home/shared/triage.md.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "name": "codebase-audit",
+  "description": "Parallel codebase analysis: architecture, security, quality, and synthesis",
+
+  "agents": [
+    { "name": "morgan", "persona": "architect" },
+    { "name": "casey", "persona": "security" },
+    { "name": "alex", "persona": "coder" },
+    { "name": "sam", "persona": "qa" },
+    { "name": "taylor", "persona": "writer" }
+  ],
+
+  "tasks": [
+    {
+      "id": "inventory",
+      "subject": "Inventory the codebase",
+      "owner": "morgan",
+      "description": "Survey /home/shared/inputs/repo/. Map the directory structure, identify languages, frameworks, entry points, and dependencies. Write findings to /home/shared/inventory.md and register as artifact."
+    },
+    {
+      "id": "architecture",
+      "subject": "Analyze system architecture",
+      "owner": "morgan",
+      "description": "Based on /home/shared/inventory.md, document the high-level architecture: components, data flow, external dependencies, and coupling. Write to /home/shared/analysis/architecture.md",
+      "blocked_by": ["inventory"]
+    },
+    {
+      "id": "security-scan",
+      "subject": "Security audit",
+      "owner": "casey",
+      "description": "Scan /home/shared/inputs/repo/ for vulnerabilities: hardcoded secrets, injection risks, auth issues, OWASP top 10. Write findings to /home/shared/analysis/security.md",
+      "blocked_by": ["inventory"]
+    },
+    {
+      "id": "code-quality",
+      "subject": "Code quality analysis",
+      "owner": "alex",
+      "description": "Review /home/shared/inputs/repo/ for code smells, dead code, complexity, naming conventions, and error handling patterns. Write to /home/shared/analysis/code-quality.md",
+      "blocked_by": ["inventory"]
+    },
+    {
+      "id": "test-coverage",
+      "subject": "Test coverage and quality assessment",
+      "owner": "sam",
+      "description": "Analyze test files in /home/shared/inputs/repo/. Assess coverage, identify untested paths, evaluate test quality. Write to /home/shared/analysis/test-coverage.md",
+      "blocked_by": ["inventory"]
+    },
+    {
+      "id": "synthesis",
+      "subject": "Synthesize findings into final report",
+      "owner": "taylor",
+      "description": "Read all analysis files in /home/shared/analysis/. Produce a comprehensive audit report with executive summary, detailed findings, risk ratings, and prioritized recommendations. Write to /home/shared/outputs/audit-report.md and register as artifact.",
+      "blocked_by": ["architecture", "security-scan", "code-quality", "test-coverage"]
+    }
+  ],
+
+  "mail": [
+    {
+      "to": "morgan",
+      "subject": "Swarm started: codebase-audit",
+      "body": "You are leading a codebase audit. Start by inventorying the repo at /home/shared/inputs/repo/.\n\nYour first task (inventory) is ready on the task board.\n\nRun: task.sh ready --owner $(whoami)"
+    }
+  ]
+}

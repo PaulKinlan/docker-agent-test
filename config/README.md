@@ -74,6 +74,69 @@ The base persona is always included. Specialist personas extend it when specifie
 3. Rebuild the Docker image: `docker-compose build`
 4. Use with: `make create-agent NAME=alice PERSONA=<name>`
 
+### `skills/` - Agent Skill Packs
+
+Files in this directory are copied to `/etc/agent-skills/` in the container. Used by `create-agent.sh` to populate each agent's `~/.claude/skills/` directory at creation time.
+
+**Directory structure:**
+```
+skills/
+├── _universal/                    # Installed to every agent
+│   ├── task-workflow/SKILL.md     # Check ready tasks, claim, work, complete
+│   ├── artifact-sharing/SKILL.md  # Produce/consume shared files
+│   ├── report-results/SKILL.md    # Write good result summaries
+│   └── agent-communication/SKILL.md # Discover team, send mail, check inbox
+├── coder/                         # Installed when persona = coder
+│   ├── project-setup/SKILL.md
+│   ├── test-and-validate/SKILL.md
+│   ├── focused-pr/SKILL.md
+│   └── code-refactor/SKILL.md
+├── researcher/                    # Installed when persona = researcher
+│   ├── structured-research/SKILL.md
+│   └── source-evaluation/SKILL.md
+├── architect/
+├── security/
+├── qa/
+├── writer/
+├── editor/
+├── reviewer/
+├── planner/
+├── analyst/
+├── devops/
+├── manager/
+└── ops/
+```
+
+**Persona-mapping convention:** The directory name under `skills/` must match the persona filename (without `.md`). For example, persona `coder.md` maps to `skills/coder/`. The special `_universal/` directory is always installed regardless of persona.
+
+**Skill format:** Each skill is a directory containing a `SKILL.md` file in Claude Code format:
+```markdown
+---
+name: skill-name
+description: What the skill does
+---
+
+# Skill Name
+
+Procedural instructions with real, runnable commands...
+```
+
+**Installation behavior:**
+- Skills are **copied** into the agent's home directory (not symlinked), so agents can extend or modify them at runtime
+- **Existing skills are never overwritten** — if an agent already has a skill directory, it is preserved. This protects agent customizations across re-runs
+- After installation, the skills directory is `chown`'d to the agent user for writability
+
+**How to add a new skill:**
+1. Create a directory: `config/skills/<persona>/<skill-name>/`
+2. Write a `SKILL.md` file with YAML frontmatter and procedural markdown content
+3. Rebuild the Docker image: `docker-compose build`
+4. New agents with that persona will automatically receive the skill
+
+**How to add a universal skill:**
+1. Create a directory: `config/skills/_universal/<skill-name>/`
+2. Write a `SKILL.md` file
+3. Rebuild — all new agents will receive it regardless of persona
+
 ### `smtpd/` - OpenSMTPD Configuration
 
 Files in this directory are copied to `/etc/smtpd/` in the container. Used for mail alias configuration.

@@ -41,17 +41,17 @@ const COMMANDS = {
   build: {
     description: "Build the Docker image",
     category: "Container",
-    toSpawn: () => ({ cmd: "docker-compose", args: ["build"] }),
+    toSpawn: () => ({ cmd: "docker", args: ["compose", "build"] }),
   },
   up: {
     description: "Start the container",
     category: "Container",
-    toSpawn: () => ({ cmd: "docker-compose", args: ["up", "-d"] }),
+    toSpawn: () => ({ cmd: "docker", args: ["compose", "up", "-d"] }),
   },
   down: {
     description: "Stop and remove the container",
     category: "Container",
-    toSpawn: () => ({ cmd: "docker-compose", args: ["down"] }),
+    toSpawn: () => ({ cmd: "docker", args: ["compose", "down"] }),
   },
   restart: {
     description: "Restart the container",
@@ -62,8 +62,8 @@ const COMMANDS = {
     description: "View container logs",
     category: "Container",
     toSpawn: () => ({
-      cmd: "docker-compose",
-      args: ["logs", "-f", "--timestamps"],
+      cmd: "docker",
+      args: ["compose", "logs", "-f", "--timestamps"],
     }),
   },
   clean: {
@@ -116,8 +116,9 @@ const COMMANDS = {
     category: "Agents",
     minArgs: 1,
     toSpawn: (args) => ({
-      cmd: "docker-compose",
+      cmd: "docker",
       args: [
+        "compose",
         "exec",
         "-T",
         getContainerName(),

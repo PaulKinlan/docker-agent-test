@@ -68,28 +68,28 @@ help:
 	@echo "  make list-providers                     - List known API key provider names"
 
 build:
-	docker-compose build
+	docker compose build
 
 up:
-	docker-compose up -d
+	docker compose up -d
 
 down:
-	docker-compose down
+	docker compose down
 
 restart: down up
 
 shell:
-	docker-compose exec agent-host /bin/bash
+	docker compose exec agent-host /bin/bash
 
 logs:
-	docker-compose logs -f --timestamps
+	docker compose logs -f --timestamps
 
 clean: down
 	docker rmi agent-host:latest || true
 	@echo "Note: home directory contents preserved in ./home/"
 
 soft-reset: ## Remove all agents, clear logs and mail (container stays running)
-	docker-compose exec -T agent-host /usr/local/bin/soft-reset.sh --yes
+	docker compose exec -T agent-host /usr/local/bin/soft-reset.sh --yes
 
 reset: down ## Full reset: stop container, remove image, wipe home/log/mail
 	docker rmi agent-host:latest || true
@@ -104,7 +104,7 @@ create-agent:
 ifndef NAME
 	$(error NAME is required. Usage: make create-agent NAME=myagent [PERSONA=coder] [INSTRUCTIONS="text"] [API_KEY=PROVIDER=key])
 endif
-	docker-compose exec -T agent-host /usr/local/bin/create-agent.sh $(NAME) \
+	docker compose exec -T agent-host /usr/local/bin/create-agent.sh $(NAME) \
 		$(if $(PERSONA),--persona $(PERSONA)) \
 		$(if $(INSTRUCTIONS),--instructions "$(INSTRUCTIONS)") \
 		$(if $(API_KEY),--api-key $(API_KEY))
@@ -113,7 +113,7 @@ remove-agent:
 ifndef NAME
 	$(error NAME is required. Usage: make remove-agent NAME=myagent)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/remove-agent.sh $(NAME)
+	docker compose exec -T agent-host /usr/local/bin/remove-agent.sh $(NAME)
 
 update-agent:
 ifndef NAME
@@ -122,10 +122,10 @@ endif
 ifndef PERSONA
 	$(error PERSONA is required. Usage: make update-agent NAME=myagent PERSONA=coder)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/update-agent.sh $(NAME) --persona $(PERSONA)
+	docker compose exec -T agent-host /usr/local/bin/update-agent.sh $(NAME) --persona $(PERSONA)
 
 list-agents:
-	docker-compose exec -T agent-host /usr/local/bin/list-agents.sh
+	docker compose exec -T agent-host /usr/local/bin/list-agents.sh
 
 list-personas:
 	@echo "Available personas (in config/personas/):"
@@ -144,16 +144,16 @@ agent-logs:
 ifndef NAME
 	$(error NAME is required. Usage: make agent-logs NAME=myagent)
 endif
-	docker-compose exec -T agent-host journalctl -u agent@$(NAME).service -f
+	docker compose exec -T agent-host journalctl -u agent@$(NAME).service -f
 
 agent-shell:
 ifndef NAME
 	$(error NAME is required. Usage: make agent-shell NAME=myagent)
 endif
-	docker-compose exec --user $(NAME) agent-host /bin/bash
+	docker compose exec --user $(NAME) agent-host /bin/bash
 
 sync-aliases: ## Regenerate mail aliases from agents group
-	docker-compose exec -T agent-host /usr/local/bin/sync-aliases.sh
+	docker compose exec -T agent-host /usr/local/bin/sync-aliases.sh
 
 mail: ## Send mail to an agent or alias
 ifndef TO
@@ -162,7 +162,7 @@ endif
 ifndef MSG
 	$(error MSG is required. Usage: make mail TO=alice MSG="Hello" [FROM=bob] [SUBJECT="Hi"])
 endif
-	docker-compose exec -T agent-host /usr/local/bin/send-mail.sh "$(TO)" $(if $(FROM),--from "$(FROM)") $(if $(SUBJECT),--subject "$(SUBJECT)") -- "$(MSG)"
+	docker compose exec -T agent-host /usr/local/bin/send-mail.sh "$(TO)" $(if $(FROM),--from "$(FROM)") $(if $(SUBJECT),--subject "$(SUBJECT)") -- "$(MSG)"
 
 # --- API key management ---
 
@@ -173,13 +173,13 @@ endif
 ifndef KEY
 	$(error KEY is required. Usage: make set-api-key NAME=myagent KEY=ANTHROPIC_API_KEY=sk-xxx)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh set $(NAME) $(KEY)
+	docker compose exec -T agent-host /usr/local/bin/manage-api-keys.sh set $(NAME) $(KEY)
 
 get-api-keys:
 ifndef NAME
 	$(error NAME is required. Usage: make get-api-keys NAME=myagent)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh get $(NAME)
+	docker compose exec -T agent-host /usr/local/bin/manage-api-keys.sh get $(NAME)
 
 remove-api-key:
 ifndef NAME
@@ -188,16 +188,16 @@ endif
 ifndef KEY
 	$(error KEY is required. Usage: make remove-api-key NAME=myagent KEY=OPENAI_API_KEY)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh remove $(NAME) $(KEY)
+	docker compose exec -T agent-host /usr/local/bin/manage-api-keys.sh remove $(NAME) $(KEY)
 
 clear-api-keys:
 ifndef NAME
 	$(error NAME is required. Usage: make clear-api-keys NAME=myagent)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh clear $(NAME)
+	docker compose exec -T agent-host /usr/local/bin/manage-api-keys.sh clear $(NAME)
 
 list-providers:
-	docker-compose exec -T agent-host /usr/local/bin/manage-api-keys.sh list-providers
+	docker compose exec -T agent-host /usr/local/bin/manage-api-keys.sh list-providers
 
 # --- Agent snapshots (host-side) ---
 
@@ -219,13 +219,13 @@ snapshot-status:
 # --- Swarm orchestration ---
 
 swarm-status: ## Show task board, agent health, costs, and recent events
-	docker-compose exec -T agent-host /usr/local/bin/swarm-status.sh
+	docker compose exec -T agent-host /usr/local/bin/swarm-status.sh
 
 swarm-stop: ## Stop all agents and the orchestrator
-	docker-compose exec -T agent-host /usr/local/bin/stop-swarm.sh $(if $(REASON),--reason "$(REASON)")
+	docker compose exec -T agent-host /usr/local/bin/stop-swarm.sh $(if $(REASON),--reason "$(REASON)")
 
 health: ## Check agent heartbeat health
-	docker-compose exec -T agent-host /usr/local/bin/check-health.sh
+	docker compose exec -T agent-host /usr/local/bin/check-health.sh
 
 task-add: ## Add a task to the shared board
 ifndef SUBJECT
@@ -234,15 +234,15 @@ endif
 ifndef OWNER
 	$(error OWNER is required. Usage: make task-add SUBJECT="Build engine" OWNER=alice)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/task.sh add "$(SUBJECT)" --owner $(OWNER) \
+	docker compose exec -T agent-host /usr/local/bin/task.sh add "$(SUBJECT)" --owner $(OWNER) \
 		$(if $(DESCRIPTION),--description "$(DESCRIPTION)") \
 		$(if $(BLOCKED_BY),--blocked-by $(BLOCKED_BY))
 
 task-list: ## List all tasks on the board
-	docker-compose exec -T agent-host /usr/local/bin/task.sh list $(if $(OWNER),--owner $(OWNER)) $(if $(STATUS),--status $(STATUS))
+	docker compose exec -T agent-host /usr/local/bin/task.sh list $(if $(OWNER),--owner $(OWNER)) $(if $(STATUS),--status $(STATUS))
 
 task-ready: ## List tasks that are ready to start (blockers satisfied)
-	docker-compose exec -T agent-host /usr/local/bin/task.sh ready $(if $(OWNER),--owner $(OWNER))
+	docker compose exec -T agent-host /usr/local/bin/task.sh ready $(if $(OWNER),--owner $(OWNER))
 
 task-update: ## Update a task's status
 ifndef ID
@@ -251,27 +251,27 @@ endif
 ifndef STATUS
 	$(error STATUS is required. Usage: make task-update ID=task-abc123 STATUS=completed [RESULT="summary"])
 endif
-	docker-compose exec -T agent-host /usr/local/bin/task.sh update $(ID) --status $(STATUS) \
+	docker compose exec -T agent-host /usr/local/bin/task.sh update $(ID) --status $(STATUS) \
 		$(if $(RESULT),--result "$(RESULT)")
 
 task-graph: ## Show task dependency graph
-	docker-compose exec -T agent-host /usr/local/bin/task.sh graph
+	docker compose exec -T agent-host /usr/local/bin/task.sh graph
 
 artifact-list: ## List shared artifacts
-	docker-compose exec -T agent-host /usr/local/bin/artifact.sh list $(if $(PRODUCER),--producer $(PRODUCER))
+	docker compose exec -T agent-host /usr/local/bin/artifact.sh list $(if $(PRODUCER),--producer $(PRODUCER))
 
 artifact-register: ## Register a shared artifact
 ifndef FILE
 	$(error FILE is required. Usage: make artifact-register FILE=reports/out.csv [DESCRIPTION="Q4 report"])
 endif
-	docker-compose exec -T agent-host /usr/local/bin/artifact.sh register $(FILE) \
+	docker compose exec -T agent-host /usr/local/bin/artifact.sh register $(FILE) \
 		$(if $(DESCRIPTION),--description "$(DESCRIPTION)")
 
 artifact-get: ## Get metadata for an artifact
 ifndef FILE
 	$(error FILE is required. Usage: make artifact-get FILE=reports/out.csv)
 endif
-	docker-compose exec -T agent-host /usr/local/bin/artifact.sh get $(FILE)
+	docker compose exec -T agent-host /usr/local/bin/artifact.sh get $(FILE)
 
 # --- Presets ---
 

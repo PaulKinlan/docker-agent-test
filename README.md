@@ -73,6 +73,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── project-kickoff.json    # Design → scaffold+CI → tests → readme
 │   ├── migration-plan.json     # Assess → research → migrate → test → guide
 │   └── incident-response.json  # Triage → diagnose → hotfix → verify → postmortem
+├── docs/                  # Technical reference documentation
+│   └── systemd-cgroup-docker-compat.md  # systemd + cgroup v2 + Docker Desktop research
 ├── shared/                # Shared artifacts directory (mounted as /home/shared)
 ├── tui/                   # Interactive TUI (Node.js + Ink, host-side only)
 │   ├── package.json       # Dependencies (ink, react)

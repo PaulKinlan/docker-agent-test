@@ -59,7 +59,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   │   └── nvm.sh         # Loads nvm (Node Version Manager) for all users
 │   └── systemd/           # Systemd service definitions
 │       ├── agent@.service          # Per-agent service template
-│       ├── mail-watcher@.service   # Per-agent Maildir watcher template
+│       ├── mail-watcher@.service   # Per-agent Maildir watcher (non-Docker deployments)
 │       ├── agent-manager.service   # Boot-time reconciliation service
 │       └── api-keys-sync.service   # Boot-time API key sync service
 ├── presets/               # Workflow preset library (declarative swarm configs)
@@ -263,7 +263,7 @@ Run `make list-providers` to see all supported provider names.
 
 #### How Agents Run
 
-Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. A companion `mail-watcher@<username>.service` watches the agent's `~/Maildir/new/` directory using inotify and moves delivered messages to `~/Maildir/cur/`. The agent loop uses `inotifywait` to wake immediately when new mail arrives instead of waiting for the next cycle. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`) but new mail triggers an immediate cycle. All output is logged to both the systemd journal and `/home/<username>/.agent.log`.
+Each agent runs as a background process (`nohup su - <user> -c run-agent.sh`) launched by `create-agent.sh`, with PID tracked at `/run/agent-<username>.pid`. A companion `mail-watcher.sh` process watches the agent's `~/Maildir/new/` directory using inotify and moves delivered messages to `~/Maildir/cur/`. The agent loop uses `inotifywait` to wake immediately when new mail arrives instead of waiting for the next cycle. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`) but new mail triggers an immediate cycle. All output is logged to `/var/log/agent-<username>.log` (agent) and `/var/log/mail-watcher-<username>.log` (watcher).
 
 At container boot, `agent-manager.sh` automatically reconciles all users in the `agents` group, ensuring their services are enabled and started.
 

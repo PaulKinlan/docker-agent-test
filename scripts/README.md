@@ -35,7 +35,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
 | `soft-reset.sh` | Remove all agents and clear logs | `soft-reset.sh [--yes]` |
-| `mail-watcher.sh` | inotify-based Maildir watcher (per-agent) | Automatic — run by `mail-watcher@<user>.service` |
+| `mail-watcher.sh` | inotify-based Maildir watcher (per-agent) | Automatic — launched by `create-agent.sh` / `agent-manager.sh` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
 | `send-mail.sh` | Send mail to an agent or alias | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
 | `sync-aliases.sh` | Regenerate mail aliases | `sync-aliases.sh` |
@@ -193,7 +193,7 @@ make remove-agent NAME=<username>
 - `--keep-home` (optional) — Preserve the home directory at `/home/<username>` instead of deleting it.
 
 **What it does:**
-1. Stops and disables the `mail-watcher@<username>.service` and `agent@<username>.service`
+1. Stops the mail watcher and agent processes (PID-based)
 2. Removes the Linux user account
 3. Removes the home directory including Maildir (unless `--keep-home` is specified)
 4. Removes empty persona groups (e.g., if the last coder is removed, the `coder` group is deleted)
@@ -560,7 +560,7 @@ This script is **not intended to be run manually**.
 1. Enumerates all users in the `agents` group
 2. For each user, verifies the account and home directory still exist
 3. Creates `~/Maildir/{new,cur,tmp}` if missing (migration support)
-4. Enables and queues start for `agent@<username>.service` and `mail-watcher@<username>.service` (non-blocking)
+4. Enables and queues start for `agent@<username>.service` (non-blocking) and launches the mail watcher via `nohup su`
 5. Regenerates mail aliases to match current agent membership
 6. Reports a summary of started vs. failed agents
 
@@ -570,7 +570,7 @@ This script is **not intended to be run manually**.
 
 An inotify-based watcher that monitors each agent's `~/Maildir/new/` directory for incoming mail. When OpenSMTPD delivers a message, this script moves it from `new/` to `cur/` (standard Maildir "seen" transition) and logs the event. This prevents file buildup in `new/` and provides the foundation for Phase 2 work-queue integration.
 
-Run by the `mail-watcher@<username>.service` systemd unit — **not intended to be run manually**.
+Launched via `nohup su` by `create-agent.sh` and `agent-manager.sh` — **not intended to be run manually**. PID tracked at `/run/mail-watcher-<username>.pid`.
 
 **What it does:**
 1. Ensures the `~/Maildir/{new,cur,tmp}` directory structure exists
@@ -581,9 +581,11 @@ Run by the `mail-watcher@<username>.service` systemd unit — **not intended to 
 
 **Logs:**
 ```bash
-make agent-logs NAME=alice
-# or view mail watcher specifically:
-journalctl -u mail-watcher@alice.service -f
+# View mail watcher log
+cat /var/log/mail-watcher-alice.log
+
+# Or tail it live
+tail -f /var/log/mail-watcher-alice.log
 ```
 
 ---

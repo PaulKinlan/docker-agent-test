@@ -1,7 +1,7 @@
 #!/bin/bash
 # mail-watcher.sh — inotify-based Maildir watcher for event-driven mail processing
 #
-# Usage: mail-watcher.sh (run by mail-watcher@<user>.service)
+# Usage: mail-watcher.sh (launched by create-agent.sh / agent-manager.sh)
 #
 # Watches ~/Maildir/new/ for incoming mail using inotifywait. When OpenSMTPD
 # delivers a message, this script:

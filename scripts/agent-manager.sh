@@ -70,10 +70,21 @@ for USERNAME in $AGENTS_MEMBERS; do
         ((FAILED++))
     fi
 
-    # Start mail watcher for event-driven mail processing
-    echo "  Enabling mail-watcher@${USERNAME}.service..."
-    timeout --kill-after=5 10 systemctl enable "mail-watcher@${USERNAME}.service" 2>/dev/null || true
-    timeout --kill-after=5 10 systemctl start --no-block "mail-watcher@${USERNAME}.service" 2>/dev/null || true
+    # Start mail watcher via direct launch (same nohup+su pattern as create-agent.sh)
+    WATCHER_LOG="/var/log/mail-watcher-${USERNAME}.log"
+    WATCHER_PID="/run/mail-watcher-${USERNAME}.pid"
+
+    # Kill stale watcher if pidfile exists from a previous boot
+    if [[ -f "$WATCHER_PID" ]]; then
+        OLD_PID="$(cat "$WATCHER_PID")"
+        kill "$OLD_PID" 2>/dev/null || true
+        rm -f "$WATCHER_PID"
+    fi
+
+    nohup su - "$USERNAME" -c "MAIL=/home/$USERNAME/Maildir /usr/local/bin/mail-watcher.sh" \
+        > "$WATCHER_LOG" 2>&1 &
+    echo "$!" > "$WATCHER_PID"
+    echo "  [OK]   $USERNAME — mail watcher started (PID $!)"
 done
 
 # Regenerate mail aliases to ensure they match current agent membership

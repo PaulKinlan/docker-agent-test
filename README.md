@@ -103,7 +103,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
-    └── sync-api-keys.sh   # Boot-time API key environment sync
+    ├── sync-api-keys.sh   # Boot-time API key environment sync
+    └── test-systemd-services.sh  # Verify systemd service management works
 ```
 
 ## Usage

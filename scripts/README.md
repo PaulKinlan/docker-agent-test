@@ -50,6 +50,7 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `run-agent.sh` | Agent entrypoint (run by systemd) | Automatic — not run manually |
 | `agent-manager.sh` | Boot-time service reconciliation | Automatic — runs at container start |
 | `sync-api-keys.sh` | Sync env vars to global API keys | Automatic — runs at container start |
+| `test-systemd-services.sh` | Verify systemd service management | `test-systemd-services.sh [--verbose]` |
 
 ---
 
@@ -116,7 +117,8 @@ make create-agent NAME=<username> [PERSONA=<name>] [INSTRUCTIONS="text"] [API_KE
 6. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
 7. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
 8. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
-9. Reloads systemd to pick up the new instance, then enables and starts the `agent@<username>.service` unit (blocks until active or reports failure with diagnostic output including recent journal entries)
+9. Runs `systemctl daemon-reload` to pick up the new service instance
+10. Enables and starts `agent@<username>.service` (blocks until active or reports failure with journal entries and service status)
 
 **Examples:**
 ```bash
@@ -634,6 +636,67 @@ docker-compose up -d
 
 ---
 
+## test-systemd-services.sh
+
+Verifies that systemd service management is functional inside the container. Tests cgroup v2 infrastructure, systemd health, service lifecycle (create/start/stop/restart), resource limits (MemoryMax, CPUQuota), journal logging, and boot services.
+
+**Usage:**
+```bash
+# Inside the container
+test-systemd-services.sh [--verbose]
+
+# From the host via Make
+make test-systemd
+make test-systemd VERBOSE=1
+```
+
+**Arguments:**
+- `--verbose` / `-v` (optional) — Show additional diagnostic output for each test.
+
+**What it tests:**
+
+| Phase | Tests |
+|-------|-------|
+| 1. cgroup v2 infrastructure | Filesystem type, writable hierarchy, child cgroup creation, memory/cpu controllers |
+| 2. systemd health | PID 1 is systemd, basic.target/multi-user.target active, system state, journald |
+| 3. Agent service template | `agent@.service` exists, `run-agent.sh` is executable |
+| 4. Service lifecycle | daemon-reload, enable, start, list, stop, restart, disable |
+| 5. Resource limits | MemoryMax=512M, CPUQuota=50%, NoNewPrivileges, RestrictSUIDSGID |
+| 6. Journal logging | Journal entries recorded for agent service |
+| 7. Boot services | agent-manager.service, api-keys-sync.service |
+
+**Exit codes:**
+- `0` — All tests passed
+- `1` — One or more tests failed
+
+The test creates a temporary user (`__test_systemd__`) and cleans it up automatically when done.
+
+**Example output:**
+```
+systemd Service Management Test Harness
+Platform: Linux 6.10.14-linuxkit x86_64
+systemd:  systemd 256 (256.10-1-arch)
+
+Phase 1: cgroup v2 infrastructure
+  ✓ cgroup v2 filesystem detected (cgroup2fs)
+  ✓ cgroup hierarchy is writable
+  ✓ Can create child cgroups
+  ✓ Memory controller available
+  ✓ CPU controller available
+
+Phase 2: systemd health
+  ✓ systemd is PID 1
+  ...
+
+Summary
+  Total: 24 tests
+  Passed: 24
+
+PASS — All tests passed. systemd service management is functional.
+```
+
+---
+
 ## Makefile Targets
 
 The `Makefile` in the project root provides convenience wrappers (the container must be running):
@@ -673,6 +736,12 @@ make list-presets                                       # List available workflo
 make load-preset FILE=presets/bug-triage.json           # Load a preset (create agents + tasks + mail)
 make load-preset FILE=presets/bug-triage.json DRY_RUN=1 # Preview without executing
 make load-preset FILE=presets/feature-build.json SKIP_EXISTING=1  # Skip existing agents
+```
+
+**Testing:**
+```bash
+make test-systemd                      # Verify systemd service management works
+make test-systemd VERBOSE=1            # Verbose output with diagnostics
 ```
 
 **Snapshots (host-side, container not required):**

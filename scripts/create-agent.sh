@@ -9,8 +9,10 @@
 #   3. Builds the agent's agents.md from base persona + optional specialist persona + custom instructions
 #   4. Creates an agent-writable .claude/ directory (with skills/ subdirectory)
 #      and a root-owned read-only config.json inside it
-#   5. Configures per-agent API keys if provided
-#   6. Enables and starts the agent@<username> systemd service
+#   5. Configures git identity (user.name, user.email)
+#   6. Sets up SSH known_hosts for common git forges (github.com, gitlab.com)
+#   7. Configures per-agent API keys if provided
+#   8. Enables and starts the agent@<username> systemd service
 #
 # Options:
 #   --persona <name>            Apply a specialist persona (e.g., coder, researcher)
@@ -277,7 +279,26 @@ echo "  -> Skills installed: $SKILL_COUNT"
 
 echo "  -> .claude/ directory created (agent-writable, config.json root-owned)"
 
-# 4. Configure per-agent API keys if provided
+# 4. Configure git identity
+# Set user.name from username (+ persona) and user.email from username@agent-host
+GIT_NAME="$USERNAME"
+if [[ -n "$PERSONA" ]]; then
+    GIT_NAME="$USERNAME (${PERSONA%.md})"
+fi
+su - "$USERNAME" -c "git config --global user.name '$GIT_NAME'" 2>/dev/null || true
+su - "$USERNAME" -c "git config --global user.email '${USERNAME}@agent-host'" 2>/dev/null || true
+echo "  -> Git identity: $GIT_NAME <${USERNAME}@agent-host>"
+
+# 5. Set up SSH known_hosts for common forges (non-interactive git clone/push)
+SSH_DIR="/home/$USERNAME/.ssh"
+mkdir -p "$SSH_DIR"
+chmod 700 "$SSH_DIR"
+ssh-keyscan -t ed25519,rsa github.com gitlab.com 2>/dev/null > "$SSH_DIR/known_hosts"
+chmod 644 "$SSH_DIR/known_hosts"
+chown -R "$USERNAME:$USERNAME" "$SSH_DIR"
+echo "  -> SSH known_hosts populated (github.com, gitlab.com)"
+
+# 6. Configure per-agent API keys if provided
 if [[ ${#API_KEYS[@]} -gt 0 ]]; then
     API_KEYS_FILE="$CLAUDE_DIR/api-keys.env"
     {
@@ -296,7 +317,7 @@ if [[ ${#API_KEYS[@]} -gt 0 ]]; then
     echo "  -> API keys configured (${#API_KEYS[@]} key(s))"
 fi
 
-# 5. Enable and start the agent service via systemd
+# 7. Enable and start the agent service via systemd
 # Wait for systemd to finish booting if it hasn't yet (basic.target gates
 # service start). This prevents races when create-agent.sh runs early in boot.
 if ! timeout --kill-after=5 30 systemctl is-active basic.target &>/dev/null; then

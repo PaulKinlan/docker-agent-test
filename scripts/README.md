@@ -115,10 +115,12 @@ make create-agent NAME=<username> [PERSONA=<name>] [INSTRUCTIONS="text"] [API_KE
 4. Regenerates mail aliases (adds the user to the `all` and `<persona>-all` aliases)
 5. Builds `agents.md` from base persona + optional specialist persona + optional custom instructions
 6. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
-7. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
-8. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
-9. Runs `systemctl daemon-reload` to pick up the new service instance
-10. Enables and starts `agent@<username>.service` (blocks until active or reports failure with journal entries and service status)
+7. Configures git identity (`user.name` from username + persona, `user.email` as `<username>@agent-host`)
+8. Sets up `~/.ssh/known_hosts` with host keys for github.com and gitlab.com (best-effort; warns if network is unavailable)
+9. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
+10. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
+11. Runs `systemctl daemon-reload` to pick up the new service instance
+12. Enables and starts `agent@<username>.service` (blocks until active or reports failure with journal entries and service status)
 
 **Examples:**
 ```bash

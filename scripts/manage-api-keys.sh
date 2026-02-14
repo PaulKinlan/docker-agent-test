@@ -48,6 +48,8 @@ readonly KNOWN_PROVIDERS=(
     "AWS_DEFAULT_REGION"
     "AZURE_OPENAI_API_KEY"
     "AZURE_OPENAI_ENDPOINT"
+    "GITHUB_TOKEN"
+    "GH_TOKEN"
 )
 
 usage() {

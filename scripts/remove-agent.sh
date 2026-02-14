@@ -44,17 +44,44 @@ fi
 
 echo "Removing agent user: $USERNAME"
 
-# 1. Stop and disable the agent service
+# 1. Stop and disable the agent service and mail watcher
 echo "  Checking service status..."
+
+# Stop mail watcher (process-based)
+if [[ -f "/run/mail-watcher-${USERNAME}.pid" ]]; then
+    WATCHER_PID_VAL="$(cat "/run/mail-watcher-${USERNAME}.pid")"
+    if kill -0 "$WATCHER_PID_VAL" 2>/dev/null; then
+        kill "$WATCHER_PID_VAL" 2>/dev/null || true
+        echo "  -> Mail watcher stopped (PID $WATCHER_PID_VAL)"
+    fi
+    rm -f "/run/mail-watcher-${USERNAME}.pid"
+fi
+# Also stop via systemd if it was started that way
+if timeout --kill-after=5 5 systemctl is-enabled "mail-watcher@${USERNAME}.service" &>/dev/null; then
+    timeout --kill-after=5 10 systemctl stop "mail-watcher@${USERNAME}.service" 2>/dev/null || true
+    timeout --kill-after=5 10 systemctl disable "mail-watcher@${USERNAME}.service" 2>/dev/null || true
+    echo "  -> mail-watcher@${USERNAME}.service stopped and disabled"
+fi
+
+# Stop agent process (PID-based)
+if [[ -f "/run/agent-${USERNAME}.pid" ]]; then
+    AGENT_PID_VAL="$(cat "/run/agent-${USERNAME}.pid")"
+    if kill -0 "$AGENT_PID_VAL" 2>/dev/null; then
+        kill "$AGENT_PID_VAL" 2>/dev/null || true
+        echo "  -> Agent process stopped (PID $AGENT_PID_VAL)"
+    fi
+    rm -f "/run/agent-${USERNAME}.pid"
+fi
+
+# Stop via systemd if enabled
 if timeout --kill-after=5 5 systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
-    # Use timeout with --kill-after to prevent hanging if systemd D-Bus is slow inside Docker
     echo "  Stopping agent@${USERNAME}.service..."
     timeout --kill-after=5 10 systemctl stop "agent@${USERNAME}.service" 2>/dev/null || true
     echo "  Disabling agent@${USERNAME}.service..."
     timeout --kill-after=5 10 systemctl disable "agent@${USERNAME}.service" 2>/dev/null || true
     echo "  -> agent@${USERNAME}.service stopped and disabled"
 else
-    echo "  -> No active service found (skipping)"
+    echo "  -> No active systemd service found (skipping)"
 fi
 
 # 2. Find persona groups the user belongs to (excluding agents and their primary group)

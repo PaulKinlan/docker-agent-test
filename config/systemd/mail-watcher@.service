@@ -1,0 +1,21 @@
+[Unit]
+Description=Mail watcher for user %i
+After=smtpd.service
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i
+Environment=MAIL=/home/%i/Maildir
+ExecStart=/usr/local/bin/mail-watcher.sh
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mail-watcher-%i
+
+[Install]
+WantedBy=multi-user.target

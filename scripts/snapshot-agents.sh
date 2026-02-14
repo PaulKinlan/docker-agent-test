@@ -1,5 +1,5 @@
 #!/bin/bash
-# snapshot-agents.sh — Snapshot agent state (home, logs, mail) using a separate git repo
+# snapshot-agents.sh — Snapshot agent state (home directories, logs) using a separate git repo
 #
 # This script runs on the HOST only. It uses a dedicated GIT_DIR (.agent-snapshots)
 # that is separate from the main source repository, so snapshots don't conflict
@@ -61,19 +61,19 @@ cmd_init() {
 
     git init --bare "$SNAPSHOT_DIR"
 
-    # Configure the snapshot repo to only track the three mount-point directories.
+    # Configure the snapshot repo to only track the container mount-point directories.
     # Everything else (source code, Dockerfile, etc.) belongs to the main repo.
     cat > "$SNAPSHOT_DIR/info/exclude" <<'EOF'
-# Snapshot repo: only track agent runtime directories (home/, log/, mail/).
+# Snapshot repo: only track agent runtime directories (home/, log/).
 # Everything else is managed by the main source repo.
+# Note: mail is stored in ~/Maildir/ (inside home/) since the switch to Maildir format.
 
 # Ignore everything by default
 /*
 
-# Track the three container mount points
+# Track the container mount points
 !/home
 !/log
-!/mail
 
 # Skip .gitkeep files (those belong to the main repo)
 .gitkeep
@@ -102,7 +102,7 @@ cmd_create() {
         fi
         # First commit — check if there's anything staged at all
         if [[ -z "$(snapshot_git diff --cached --name-only 2>/dev/null)" ]]; then
-            echo "No files to snapshot. Are the mount directories (home/, log/, mail/) empty?"
+            echo "No files to snapshot. Are the mount directories (home/, log/) empty?"
             return 0
         fi
     fi
@@ -145,8 +145,8 @@ cmd_help() {
     cat <<'EOF'
 Usage: snapshot-agents.sh <command> [args]
 
-Snapshot agent runtime state (home directories, logs, mail) using a
-separate git repository that doesn't interfere with the main source repo.
+Snapshot agent runtime state (home directories including Maildir, logs)
+using a separate git repository that doesn't interfere with the main source repo.
 
 Commands:
   init              Initialize the snapshot repository

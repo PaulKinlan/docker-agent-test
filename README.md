@@ -7,7 +7,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Uses the latest Arch Linux base image
 - Home directory mounted from the repository (`./home`)
 - System logs mounted to `./log` for external observation (journald, smtpd)
-- Mail spool mounted to `./mail` for reading inter-agent messages from the host
+- Event-driven Maildir delivery with inotify-based mail watcher (no polling delay)
 - Customizable `/etc/skel` files for new users
 - Customizable `/etc/profile.d` scripts for global environment setup
 - Systemd support enabled
@@ -15,7 +15,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Node Version Manager (nvm) installed system-wide with LTS pre-installed
 - Multi-LLM API key management (global and per-agent)
 - Support for Anthropic, OpenAI, Google, Mistral, and many other providers
-- Local mail system for inter-agent communication (opensmtpd + s-nail)
+- Local mail system for inter-agent communication (opensmtpd + s-nail + inotify-tools)
 
 ## Directory Structure
 
@@ -27,7 +27,6 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 ├── home/                   # Persistent agent home directories (mounted as /home)
 ├── log/                    # System logs from container (mounted as /var/log)
 │   └── journal/            # Systemd journal (persistent agent service logs)
-├── mail/                   # Mail spool from container (mounted as /var/spool/mail)
 ├── config/
 │   ├── api-keys/          # API key configuration (copied to /etc/agent-api-keys)
 │   │   ├── global.env.template  # Template for global API keys
@@ -60,6 +59,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   │   └── nvm.sh         # Loads nvm (Node Version Manager) for all users
 │   └── systemd/           # Systemd service definitions
 │       ├── agent@.service          # Per-agent service template
+│       ├── mail-watcher@.service   # Per-agent Maildir watcher template
 │       ├── agent-manager.service   # Boot-time reconciliation service
 │       └── api-keys-sync.service   # Boot-time API key sync service
 ├── presets/               # Workflow preset library (declarative swarm configs)
@@ -87,8 +87,9 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── remove-agent.sh    # Remove an agent user
     ├── list-agents.sh     # List agents and their status
     ├── manage-api-keys.sh # Manage per-agent API keys
-    ├── soft-reset.sh      # Remove all agents, clear logs and mail
+    ├── soft-reset.sh      # Remove all agents and clear logs
     ├── send-mail.sh       # Send mail to an agent user or alias
+    ├── mail-watcher.sh    # inotify-based Maildir watcher (per-agent)
     ├── sync-aliases.sh    # Regenerate mail aliases from agents group
     ├── snapshot-agents.sh # Snapshot agent state (host-only)
     ├── load-preset.sh     # Compile a preset JSON into running agents + tasks
@@ -262,7 +263,7 @@ Run `make list-providers` to see all supported provider names.
 
 #### How Agents Run
 
-Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`). All output is logged to both the systemd journal and `/home/<username>/.agent.log`.
+Each agent runs as its own systemd service (`agent@<username>.service`) which executes `run-agent.sh` as the agent user. A companion `mail-watcher@<username>.service` watches the agent's `~/Maildir/new/` directory using inotify and moves delivered messages to `~/Maildir/cur/`. The agent loop uses `inotifywait` to wake immediately when new mail arrives instead of waiting for the next cycle. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`) but new mail triggers an immediate cycle. All output is logged to both the systemd journal and `/home/<username>/.agent.log`.
 
 At container boot, `agent-manager.sh` automatically reconciles all users in the `agents` group, ensuring their services are enabled and started.
 
@@ -384,7 +385,7 @@ make tui           # or: node cli.mjs
 | `create alice --instructions "Focus on tests"` | Create with custom instructions |
 | `remove alice` | Remove an agent |
 | `logs alice` | Stream agent logs (Ctrl+C to stop) |
-| `soft-reset` | Remove all agents, clear logs and mail |
+| `soft-reset` | Remove all agents and clear logs |
 | `personas` | List available personas |
 | `set-key alice ANTHROPIC_API_KEY=sk-xxx` | Set API key |
 | `clear-keys alice` | Remove all API keys from an agent |
@@ -455,10 +456,9 @@ Several container directories are mounted to the host so you can observe agent a
 
 | Host path | Container path | Contents |
 |-----------|---------------|----------|
-| `./home` | `/home` | Agent home directories, including `.agent.log` per agent |
+| `./home` | `/home` | Agent home directories, including `.agent.log` and `Maildir/` per agent |
 | `./log` | `/var/log` | System logs — journald, smtpd, and other service logs |
 | `./log/journal` | `/var/log/journal` | Systemd journal (binary) — all agent service stdout/stderr |
-| `./mail` | `/var/spool/mail` | Mail spool — one mbox file per agent for inter-agent messages |
 | `./shared` | `/home/shared` | Shared artifacts — files registered via `artifact.sh` for inter-agent sharing |
 
 **Reading agent service logs from the host:**
@@ -475,11 +475,14 @@ cat ./home/alice/.agent.log
 
 **Reading agent mail from the host:**
 ```bash
-# View mail for a specific agent (plain text mbox format)
-cat ./mail/alice
+# List mail for a specific agent (Maildir format — each file is one message)
+ls ./home/alice/Maildir/cur/
 
-# List agents with mail
-ls -la ./mail/
+# Read a specific message
+cat ./home/alice/Maildir/cur/<filename>
+
+# Count unprocessed messages (still in new/)
+ls ./home/alice/Maildir/new/ 2>/dev/null | wc -l
 ```
 
 **Reading system logs:**
@@ -514,9 +517,8 @@ make snapshot-log       # Snapshot history
 ```
 
 **What gets tracked:**
-- `home/` — Agent home directories (work output, per-agent logs, config)
+- `home/` — Agent home directories (work output, per-agent logs, config, Maildir)
 - `log/` — System logs (text logs only; binary journal files are excluded)
-- `mail/` — Inter-agent mail spool
 
 See [`scripts/README.md`](scripts/README.md) for full documentation of `snapshot-agents.sh`.
 

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getContainerName } from "./container.mjs";
@@ -143,7 +143,7 @@ const COMMANDS = {
     builtin: true,
   },
   "soft-reset": {
-    description: "Remove all agents, clear logs and mail",
+    description: "Remove all agents and clear logs",
     category: "Agents",
     toSpawn: () => ({ cmd: "./scripts/soft-reset.sh", args: ["--yes"] }),
   },
@@ -501,16 +501,44 @@ export function getPersonaLines() {
 }
 
 export function getReadMailLines(agentName) {
-  const mailPath = resolve(PROJECT_ROOT, "mail", agentName);
-  try {
-    const content = readFileSync(mailPath, "utf-8");
-    if (!content.trim()) {
-      return [{ text: `  No mail for ${agentName}.`, type: "info" }];
+  // Mail is stored in Maildir format at ~/Maildir/{cur,new}/
+  const maildirBase = resolve(PROJECT_ROOT, "home", agentName, "Maildir");
+  const lines = [];
+  let messageCount = 0;
+
+  for (const subdir of ["new", "cur"]) {
+    const dirPath = resolve(maildirBase, subdir);
+    let files;
+    try {
+      files = readdirSync(dirPath).filter((f) => !f.startsWith("."));
+    } catch {
+      continue;
     }
-    return content.split("\n").map((line) => ({ text: line, type: "stdout" }));
-  } catch {
-    return [{ text: `  No mailbox found for ${agentName}.`, type: "info" }];
+    for (const file of files) {
+      try {
+        const content = readFileSync(resolve(dirPath, file), "utf-8");
+        messageCount++;
+        const label = subdir === "new" ? " [NEW]" : "";
+        lines.push({
+          text: `--- Message ${messageCount}${label} ---`,
+          type: "info",
+        });
+        lines.push(
+          ...content
+            .split("\n")
+            .map((line) => ({ text: line, type: "stdout" })),
+        );
+        lines.push({ text: "", type: "stdout" });
+      } catch {
+        continue;
+      }
+    }
   }
+
+  if (messageCount === 0) {
+    return [{ text: `  No mail for ${agentName}.`, type: "info" }];
+  }
+  return lines;
 }
 
 export function getListPresetsLines() {

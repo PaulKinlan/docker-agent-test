@@ -36,12 +36,14 @@ echo "Announcement text" | mail -s "Subject" all
 
 ### Check Your Inbox
 
+Mail is delivered to `~/Maildir/` (Maildir format). Use `mail -f ~/Maildir` to read:
+
 ```bash
 # List message headers
-mail -H
+mail -f ~/Maildir -H
 
 # Read message number 1
-echo "p 1" | mail
+echo "p 1" | mail -f ~/Maildir
 ```
 
 ### When to Communicate

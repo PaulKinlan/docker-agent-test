@@ -147,8 +147,8 @@ bash /home/shared/scripts/task.sh list 2>/dev/null | jq '
 
 echo ""
 echo "=== Agent Mail Check ==="
-# Check if agents have sent replies
-mail -H 2>/dev/null | tail -20
+# Check if agents have sent replies (Maildir format)
+mail -f ~/Maildir -H 2>/dev/null | tail -20
 
 echo ""
 echo "=== Stalled Tasks ==="

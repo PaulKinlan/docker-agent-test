@@ -174,6 +174,13 @@ chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
 chmod 700 "/home/$USERNAME"
 echo "  -> User created with home at /home/$USERNAME (mode 700)"
 
+# Create Maildir structure for local mail delivery (OpenSMTPD delivers to ~/Maildir/new/)
+MAILDIR="/home/$USERNAME/Maildir"
+mkdir -p "$MAILDIR/new" "$MAILDIR/cur" "$MAILDIR/tmp"
+chown -R "$USERNAME:$USERNAME" "$MAILDIR"
+chmod 700 "$MAILDIR"
+echo "  -> Maildir created at $MAILDIR"
+
 # Regenerate mail aliases (adds new agent to the 'all' group alias)
 /usr/local/bin/sync-aliases.sh
 
@@ -309,8 +316,19 @@ fi
 AGENT_LOG="/var/log/agent-${USERNAME}.log"
 AGENT_PID="/run/agent-${USERNAME}.pid"
 
+# Start the mail watcher (event-driven mail processing)
+WATCHER_LOG="/var/log/mail-watcher-${USERNAME}.log"
+WATCHER_PID="/run/mail-watcher-${USERNAME}.pid"
+
+echo "  Starting mail watcher..."
+nohup su - "$USERNAME" -c "MAIL=/home/$USERNAME/Maildir /usr/local/bin/mail-watcher.sh" \
+    > "$WATCHER_LOG" 2>&1 &
+WATCHER_PID_VAL=$!
+echo "$WATCHER_PID_VAL" > "$WATCHER_PID"
+echo "  -> Mail watcher started (PID $WATCHER_PID_VAL, log: $WATCHER_LOG)"
+
 echo "  Starting agent process..."
-nohup su - "$USERNAME" -c "/usr/local/bin/run-agent.sh" \
+nohup su - "$USERNAME" -c "MAIL=/home/$USERNAME/Maildir /usr/local/bin/run-agent.sh" \
     > "$AGENT_LOG" 2>&1 &
 AGENT_PID_VAL=$!
 echo "$AGENT_PID_VAL" > "$AGENT_PID"

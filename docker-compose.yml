@@ -11,8 +11,6 @@ services:
       - ./home:/home
       # Mount /var/log so system and agent logs (journald, smtpd) are visible on the host
       - ./log:/var/log
-      # Mount mail spool so inter-agent messages are visible on the host
-      - ./mail:/var/spool/mail
       # Mount shared artifacts directory so they are visible on the host
       - ./shared:/home/shared
     # Systemd needs these tmpfs mounts

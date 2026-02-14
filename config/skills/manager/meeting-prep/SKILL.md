@@ -70,7 +70,7 @@ echo "$ARTIFACTS" | jq '
 
 echo ""
 echo "=== Unread Mail ==="
-mail -H 2>/dev/null | tail -20
+mail -f ~/Maildir -H 2>/dev/null | tail -20
 
 echo ""
 echo "=== Team Roster ==="

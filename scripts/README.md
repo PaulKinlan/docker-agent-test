@@ -34,7 +34,8 @@ You can also still use the Makefile targets or run the scripts inside the contai
 | `update-agent.sh` | Update an agent's persona | `update-agent.sh <username> --persona <name>` |
 | `remove-agent.sh` | Remove an agent user | `remove-agent.sh <username> [--keep-home]` |
 | `list-agents.sh` | List agents and their status | `list-agents.sh` |
-| `soft-reset.sh` | Remove all agents, clear logs and mail | `soft-reset.sh [--yes]` |
+| `soft-reset.sh` | Remove all agents and clear logs | `soft-reset.sh [--yes]` |
+| `mail-watcher.sh` | inotify-based Maildir watcher (per-agent) | Automatic — run by `mail-watcher@<user>.service` |
 | `manage-api-keys.sh` | Manage per-agent API keys | `manage-api-keys.sh <command> <args>` |
 | `send-mail.sh` | Send mail to an agent or alias | `send-mail.sh <recipient> [--from <user>] [--subject <text>] -- <message>` |
 | `sync-aliases.sh` | Regenerate mail aliases | `sync-aliases.sh` |
@@ -111,12 +112,13 @@ make create-agent NAME=<username> [PERSONA=<name>] [INSTRUCTIONS="text"] [API_KE
 1. Validates the username format
 2. Creates a Linux user with home directory populated from `/etc/skel`. The GECOS field is set to the persona's role (e.g., `Software Developer (coder)`) so others can discover it via `getent passwd`
 3. Adds the user to the `agents` group and the persona group (e.g., `coder`), creating the persona group if needed
-4. Regenerates mail aliases (adds the user to the `all` and `<persona>-all` aliases)
-5. Builds `agents.md` from base persona + optional specialist persona + optional custom instructions
-6. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
-7. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
-8. Waits for systemd to finish booting if needed (ensures `basic.target` is active)
-9. Reloads systemd to pick up the new instance, then enables and starts the `agent@<username>.service` unit (blocks until active or reports failure with diagnostic output including recent journal entries)
+4. Creates the `~/Maildir/{new,cur,tmp}` directory structure for Maildir delivery
+5. Regenerates mail aliases (adds the user to the `all` and `<persona>-all` aliases)
+6. Builds `agents.md` from base persona + optional specialist persona + optional custom instructions
+7. Creates a root-owned `.claude/` directory in the user's home with a default `config.json`
+8. Configures per-agent API keys if provided (stored in `.claude/api-keys.env`)
+9. Starts the mail watcher process (watches `~/Maildir/new/` for incoming mail via inotify)
+10. Starts the agent process (`run-agent.sh`) which wakes immediately on new mail
 
 **Examples:**
 ```bash
@@ -191,9 +193,9 @@ make remove-agent NAME=<username>
 - `--keep-home` (optional) — Preserve the home directory at `/home/<username>` instead of deleting it.
 
 **What it does:**
-1. Stops and disables the `agent@<username>.service`
+1. Stops and disables the `mail-watcher@<username>.service` and `agent@<username>.service`
 2. Removes the Linux user account
-3. Removes the home directory (unless `--keep-home` is specified)
+3. Removes the home directory including Maildir (unless `--keep-home` is specified)
 4. Removes empty persona groups (e.g., if the last coder is removed, the `coder` group is deleted)
 5. Regenerates mail aliases (removes the user from `all` and `<persona>-all` aliases)
 
@@ -234,7 +236,7 @@ bob                  agent@bob.service   inactive   /home/bob (yes)
 
 ## soft-reset.sh
 
-Removes all agent users, clears systemd journal logs, and empties the mail spool. The container stays running and is ready for new agents immediately afterward.
+Removes all agent users and clears systemd journal logs. The container stays running and is ready for new agents immediately afterward. Mail is automatically removed with each agent's home directory (stored as Maildir).
 
 **Usage:**
 ```bash
@@ -250,10 +252,9 @@ make soft-reset
 
 **What it does:**
 1. Enumerates all users in the `agents` group
-2. Removes each agent (stops service, deletes user and home directory) via `remove-agent.sh`
+2. Removes each agent (stops agent service + mail watcher, deletes user and home directory including Maildir) via `remove-agent.sh`
 3. Regenerates mail aliases (clears the `all` group alias)
 4. Rotates and vacuums the systemd journal
-5. Deletes all files in `/var/spool/mail/`
 
 **Examples:**
 ```bash
@@ -319,7 +320,7 @@ send-mail.sh alice --from bob --subject "Update" -- "Task complete"
 
 ## snapshot-agents.sh
 
-Snapshots agent runtime state (home directories, logs, mail) using a separate git repository. This script runs **on the host only** — it refuses to run inside the container.
+Snapshots agent runtime state (home directories including Maildir, logs) using a separate git repository. This script runs **on the host only** — it refuses to run inside the container.
 
 The snapshot repo uses a separate `GIT_DIR` (`.agent-snapshots/`) that is completely independent from the main source repo. It is not mounted into the container, so agents never see it.
 
@@ -350,9 +351,8 @@ make snapshot-status
 | `help` | Show usage information | `snapshot-agents.sh help` |
 
 **What it tracks:**
-- `home/` — Agent home directories (work output, logs, config)
+- `home/` — Agent home directories (work output, logs, config, Maildir)
 - `log/` — System logs (excluding binary journal files)
-- `mail/` — Inter-agent mail spool
 
 **What it excludes:**
 - All source code and config (managed by the main repo)
@@ -528,7 +528,7 @@ This script is **not intended to be run manually** — it is invoked automatical
 1. Logs startup information (user, home directory, PID, config file status)
 2. Checks for `agents.md` and `.claude/config.json` in the user's home
 3. Loads API keys from global and per-agent configuration (see API Key Loading below)
-4. Runs an autonomous work cycle loop: invokes `agent-loop.mjs` on each iteration, then sleeps
+4. Runs an autonomous work cycle loop: invokes `agent-loop.mjs` on each iteration, then waits using `inotifywait` on `~/Maildir/new/` (wakes immediately on new mail, or after the configured interval)
 
 **API Key Loading:**
 1. First loads global defaults from `/etc/agent-api-keys/global.env` (if exists)
@@ -539,7 +539,7 @@ This script is **not intended to be run manually** — it is invoked automatical
 **Cycle loop configuration:**
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AGENT_CYCLE_INTERVAL` | `300` | Seconds to sleep between work cycles |
+| `AGENT_CYCLE_INTERVAL` | `300` | Maximum seconds between work cycles (new mail triggers immediate wakeup) |
 
 **Logs:** Output goes to both the systemd journal and `/home/<username>/.agent.log`. View logs with:
 ```bash
@@ -559,9 +559,32 @@ This script is **not intended to be run manually**.
 **What it does:**
 1. Enumerates all users in the `agents` group
 2. For each user, verifies the account and home directory still exist
-3. Enables and queues start for the corresponding `agent@<username>.service` (non-blocking)
-4. Regenerates mail aliases to match current agent membership
-5. Reports a summary of started vs. failed agents
+3. Creates `~/Maildir/{new,cur,tmp}` if missing (migration support)
+4. Enables and queues start for `agent@<username>.service` and `mail-watcher@<username>.service` (non-blocking)
+5. Regenerates mail aliases to match current agent membership
+6. Reports a summary of started vs. failed agents
+
+---
+
+## mail-watcher.sh
+
+An inotify-based watcher that monitors each agent's `~/Maildir/new/` directory for incoming mail. When OpenSMTPD delivers a message, this script moves it from `new/` to `cur/` (standard Maildir "seen" transition) and logs the event. This prevents file buildup in `new/` and provides the foundation for Phase 2 work-queue integration.
+
+Run by the `mail-watcher@<username>.service` systemd unit — **not intended to be run manually**.
+
+**What it does:**
+1. Ensures the `~/Maildir/{new,cur,tmp}` directory structure exists
+2. Processes any pre-existing messages in `new/` (from before the watcher started)
+3. Watches `~/Maildir/new/` using `inotifywait` for `CREATE` and `MOVED_TO` events
+4. Moves each delivered message to `~/Maildir/cur/` with the standard `:2,` info suffix
+5. Logs each delivery event to stdout (captured by journald)
+
+**Logs:**
+```bash
+make agent-logs NAME=alice
+# or view mail watcher specifically:
+journalctl -u mail-watcher@alice.service -f
+```
 
 ---
 
@@ -655,7 +678,7 @@ make mail TO=all MSG="Hi everyone"                # Send mail to all agents (gro
 make mail TO=alice FROM=bob MSG="Hi"              # Send mail as a specific user
 make mail TO=alice FROM=bob SUBJECT="Re: Task" MSG="Done"  # With subject
 make sync-aliases                                 # Regenerate mail aliases
-make soft-reset                                  # Remove all agents, clear logs and mail
+make soft-reset                                  # Remove all agents and clear logs
 ```
 
 **API Key Management:**

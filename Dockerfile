@@ -23,7 +23,8 @@ RUN sed -i 's/^#\?DisableSandbox.*/DisableSandbox/' /etc/pacman.conf || true && 
     openssh \
     unzip \
     s-nail \
-    opensmtpd && \
+    opensmtpd \
+    inotify-tools && \
     pacman -Scc --noconfirm
 
 # No default user — users are created dynamically via create-agent.sh
@@ -90,18 +91,19 @@ RUN mkdir -p /etc/systemd/journald.conf.d && \
 # Copy custom smtpd configuration (aliases.static for custom per-agent aliases)
 COPY config/smtpd/ /etc/smtpd/
 
-# Configure opensmtpd for local-only mail delivery
+# Configure opensmtpd for local-only Maildir delivery
 # Use explicit 127.0.0.1 instead of "localhost" to avoid IPv4/IPv6 race
 # conditions under Docker QEMU/Rosetta emulation.
-RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on 127.0.0.1 port 25\naction "local" mbox alias <aliases>\nmatch from local for local action "local"\n' > /etc/smtpd/smtpd.conf && \
+# Maildir delivers each message as a separate file to ~/Maildir/new/,
+# enabling inotify-based event-driven processing instead of mbox polling.
+RUN printf 'table aliases file:/etc/smtpd/aliases\nlisten on 127.0.0.1 port 25\naction "local" maildir alias <aliases>\nmatch from local for local action "local"\n' > /etc/smtpd/smtpd.conf && \
     touch /etc/smtpd/aliases && \
     mkdir -p /var/spool/smtpd/{offline,purge,temporary,incoming,queue,corrupt} && \
     chmod 711 /var/spool/smtpd && \
     chmod 700 /var/spool/smtpd/{purge,temporary,incoming,queue,corrupt} && \
     chmod 770 /var/spool/smtpd/offline && \
     chown smtpq:root /var/spool/smtpd/{purge,temporary,incoming,queue,corrupt} && \
-    chown root:smtpq /var/spool/smtpd/offline && \
-    mkdir -p /var/spool/mail && chmod 0755 /var/spool/mail
+    chown root:smtpq /var/spool/smtpd/offline
 
 # Override smtpd.service: run in foreground via a wrapper script.
 # Direct exec of /usr/bin/smtpd from systemd fails with 0B memory / exit 255
@@ -117,7 +119,8 @@ RUN mkdir -p /etc/systemd/system/smtpd.service.d && \
 # Configure s-nail to use the local sendmail binary (provided by opensmtpd).
 # Using mta=/usr/sbin/sendmail allows bare usernames (e.g., "mail alice")
 # which the smtp:// MTA mode rejects.
-RUN printf 'set sendwait\nset mta=/usr/sbin/sendmail\nset hostname=localhost\n' > /etc/mail.rc
+# The folder=Maildir line tells s-nail to resolve +folder shortcuts relative to ~/Maildir.
+RUN printf 'set sendwait\nset mta=/usr/sbin/sendmail\nset hostname=localhost\nset folder=Maildir\n' > /etc/mail.rc
 
 # Mask services that are unnecessary inside Docker and block the boot process.
 #

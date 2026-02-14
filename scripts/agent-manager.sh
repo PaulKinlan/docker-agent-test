@@ -47,6 +47,15 @@ for USERNAME in $AGENTS_MEMBERS; do
         continue
     fi
 
+    # Ensure Maildir structure exists (may be missing if home was preserved from before migration)
+    MAILDIR="/home/$USERNAME/Maildir"
+    if [[ ! -d "$MAILDIR/new" ]]; then
+        mkdir -p "$MAILDIR/new" "$MAILDIR/cur" "$MAILDIR/tmp"
+        chown -R "$USERNAME:$USERNAME" "$MAILDIR"
+        chmod 700 "$MAILDIR"
+        echo "  [INIT] $USERNAME — created Maildir"
+    fi
+
     # Enable and start (idempotent, with timeout to avoid D-Bus hangs)
     # --kill-after sends SIGKILL if SIGTERM doesn't work (e.g., stuck D-Bus call)
     echo "  Enabling agent@${USERNAME}.service..."
@@ -60,6 +69,11 @@ for USERNAME in $AGENTS_MEMBERS; do
         echo "  [FAIL] $USERNAME — agent failed to queue start"
         ((FAILED++))
     fi
+
+    # Start mail watcher for event-driven mail processing
+    echo "  Enabling mail-watcher@${USERNAME}.service..."
+    timeout --kill-after=5 10 systemctl enable "mail-watcher@${USERNAME}.service" 2>/dev/null || true
+    timeout --kill-after=5 10 systemctl start --no-block "mail-watcher@${USERNAME}.service" 2>/dev/null || true
 done
 
 # Regenerate mail aliases to ensure they match current agent membership

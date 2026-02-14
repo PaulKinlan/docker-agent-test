@@ -17,10 +17,9 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 ├── Makefile                    # Host-side convenience targets
 ├── README.md                   # Main project documentation
 ├── USAGE.md                    # Quick start guide
-├── home/                       # Persistent agent home directories (mounted as /home)
+├── home/                       # Persistent agent home directories (mounted as /home, includes ~/Maildir/)
 ├── log/                        # System logs from container (mounted as /var/log)
 │   └── journal/                # Systemd journal (persistent agent service logs)
-├── mail/                       # Mail spool from container (mounted as /var/spool/mail)
 ├── config/
 │   ├── README.md               # Configuration documentation
 │   ├── api-keys/               # API key configuration -> /etc/agent-api-keys

@@ -296,33 +296,31 @@ if [[ ${#API_KEYS[@]} -gt 0 ]]; then
     echo "  -> API keys configured (${#API_KEYS[@]} key(s))"
 fi
 
-# 5. Start the agent process
-# We use direct process launch instead of systemd services because systemd's
-# cgroup-based process spawning is broken in Docker Desktop (macOS) with
-# cgroup v2 and systemd v256+. The container's systemd boots targets fine
-# but ExecStart processes get exit=255 with 0B memory (never actually exec'd).
-#
-# Direct launch via nohup+su gives us:
-#   - Process runs as the agent user (same as systemd User= would)
-#   - Logs go to a file (since journald is also broken)
-#   - PID tracked via a pidfile for stop/health-check scripts
-AGENT_LOG="/var/log/agent-${USERNAME}.log"
-AGENT_PID="/run/agent-${USERNAME}.pid"
+# 5. Enable and start the agent service via systemd
+# Wait for systemd to finish booting if it hasn't yet (basic.target gates
+# service start). This prevents races when create-agent.sh runs early in boot.
+if ! timeout --kill-after=5 30 systemctl is-active basic.target &>/dev/null; then
+    echo "  Waiting for systemd boot to complete..."
+    timeout --kill-after=5 60 systemctl is-system-running --wait 2>/dev/null || true
+fi
 
-echo "  Starting agent process..."
-nohup su - "$USERNAME" -c "/usr/local/bin/run-agent.sh" \
-    > "$AGENT_LOG" 2>&1 &
-AGENT_PID_VAL=$!
-echo "$AGENT_PID_VAL" > "$AGENT_PID"
+# Reload systemd to pick up the new service instance
+systemctl daemon-reload
 
-# Verify the process is running
-sleep 3
-if kill -0 "$AGENT_PID_VAL" 2>/dev/null; then
-    echo "  -> Agent process started (PID $AGENT_PID_VAL, log: $AGENT_LOG)"
+echo "  Enabling agent@${USERNAME}.service..."
+timeout --kill-after=5 10 systemctl enable "agent@${USERNAME}.service"
+
+echo "  Starting agent@${USERNAME}.service..."
+if timeout --kill-after=5 15 systemctl start "agent@${USERNAME}.service"; then
+    echo "  -> agent@${USERNAME}.service is active"
 else
-    echo "  Error: Agent process died immediately." >&2
-    echo "  Log output:" >&2
-    tail -20 "$AGENT_LOG" 2>/dev/null | sed 's/^/    /' >&2
+    echo "  Error: agent@${USERNAME}.service failed to start." >&2
+    echo "  Recent journal entries:" >&2
+    journalctl -u "agent@${USERNAME}.service" --no-pager -n 20 2>/dev/null \
+        | sed 's/^/    /' >&2
+    echo "  Service status:" >&2
+    systemctl status "agent@${USERNAME}.service" --no-pager 2>/dev/null \
+        | sed 's/^/    /' >&2
     exit 1
 fi
 

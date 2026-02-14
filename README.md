@@ -73,6 +73,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── project-kickoff.json    # Design → scaffold+CI → tests → readme
 │   ├── migration-plan.json     # Assess → research → migrate → test → guide
 │   └── incident-response.json  # Triage → diagnose → hotfix → verify → postmortem
+├── docs/                  # Technical reference documentation
+│   └── systemd-cgroup-docker-compat.md  # systemd + cgroup v2 + Docker Desktop research
 ├── shared/                # Shared artifacts directory (mounted as /home/shared)
 ├── tui/                   # Interactive TUI (Node.js + Ink, host-side only)
 │   ├── package.json       # Dependencies (ink, react)
@@ -101,7 +103,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
-    └── sync-api-keys.sh   # Boot-time API key environment sync
+    ├── sync-api-keys.sh   # Boot-time API key environment sync
+    └── test-systemd-services.sh  # Verify systemd service management works
 ```
 
 ## Usage

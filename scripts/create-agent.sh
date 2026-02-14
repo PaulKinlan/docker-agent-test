@@ -280,23 +280,31 @@ echo "  -> Skills installed: $SKILL_COUNT"
 echo "  -> .claude/ directory created (agent-writable, config.json root-owned)"
 
 # 4. Configure git identity
-# Set user.name from username (+ persona) and user.email from username@agent-host
+# Set user.name from username (+ persona) and user.email from username@agent-host.
+# Use git config directly on the file to avoid shell injection from persona names.
 GIT_NAME="$USERNAME"
 if [[ -n "$PERSONA" ]]; then
     GIT_NAME="$USERNAME (${PERSONA%.md})"
 fi
-su - "$USERNAME" -c "git config --global user.name '$GIT_NAME'" 2>/dev/null || true
-su - "$USERNAME" -c "git config --global user.email '${USERNAME}@agent-host'" 2>/dev/null || true
-echo "  -> Git identity: $GIT_NAME <${USERNAME}@agent-host>"
+GIT_EMAIL="${USERNAME}@agent-host"
+git config --file "/home/$USERNAME/.gitconfig" user.name "$GIT_NAME"
+git config --file "/home/$USERNAME/.gitconfig" user.email "$GIT_EMAIL"
+chown "$USERNAME:$USERNAME" "/home/$USERNAME/.gitconfig"
+echo "  -> Git identity: $GIT_NAME <$GIT_EMAIL>"
 
 # 5. Set up SSH known_hosts for common forges (non-interactive git clone/push)
+# This is best-effort — agent creation must not fail in air-gapped environments.
 SSH_DIR="/home/$USERNAME/.ssh"
 mkdir -p "$SSH_DIR"
 chmod 700 "$SSH_DIR"
-ssh-keyscan -t ed25519,rsa github.com gitlab.com 2>/dev/null > "$SSH_DIR/known_hosts"
+ssh-keyscan -t ed25519,rsa github.com gitlab.com 2>/dev/null > "$SSH_DIR/known_hosts" || true
+if [[ -s "$SSH_DIR/known_hosts" ]]; then
+    echo "  -> SSH known_hosts populated (github.com, gitlab.com)"
+else
+    echo "  Warning: ssh-keyscan returned no keys (network unavailable?); SSH may prompt for host verification." >&2
+fi
 chmod 644 "$SSH_DIR/known_hosts"
 chown -R "$USERNAME:$USERNAME" "$SSH_DIR"
-echo "  -> SSH known_hosts populated (github.com, gitlab.com)"
 
 # 6. Configure per-agent API keys if provided
 if [[ ${#API_KEYS[@]} -gt 0 ]]; then

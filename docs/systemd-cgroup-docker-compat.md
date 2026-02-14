@@ -97,7 +97,7 @@ Add to `docker-compose.yml`:
 services:
   agent-host:
     privileged: true
-    cgroup: host
+    cgroup: host          # Compose spec key; older versions may need cgroupns_mode: host
     tmpfs:
       - /run
       - /run/lock
@@ -105,6 +105,10 @@ services:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
       # ... existing mounts
 ```
+
+> **Note:** The Compose spec uses `cgroup: host`. Some older Docker Compose
+> versions (pre-2.x) may require `cgroupns_mode: host` instead. With `docker run`,
+> use `--cgroupns=host`.
 
 This is the "Jeff Geerling pattern" — the most widely tested approach for running systemd inside Docker. It gives the container's systemd access to the host's (or VM's) cgroup hierarchy.
 
@@ -126,7 +130,9 @@ make build && make up && make shell
 # Verify cgroup v2 is writable:
 ls -la /sys/fs/cgroup/
 cat /proc/self/cgroup  # should show the container's cgroup path
-echo $$ > /sys/fs/cgroup/test_cgroup 2>&1 || echo "cgroup NOT writable"
+mkdir /sys/fs/cgroup/test.scope 2>/dev/null \
+  && rmdir /sys/fs/cgroup/test.scope && echo "cgroup writable" \
+  || echo "cgroup NOT writable"
 
 # Test systemd service management:
 systemctl start agent-manager.service
@@ -134,7 +140,7 @@ systemctl status agent-manager.service
 
 # Create a test agent and verify it starts via systemd:
 # (after restoring systemctl in create-agent.sh)
-create-agent.sh --name testuser
+create-agent.sh testuser
 systemctl status agent@testuser.service
 journalctl -u agent@testuser.service --no-pager -n 20
 ```
@@ -203,8 +209,8 @@ Once systemd service management works, re-enable directives in `agent@.service` 
 
 ### Tier 1: Safe in Docker (re-enable immediately)
 ```ini
-NoNewPrivileges=true          # Pure seccomp, no mount/cgroup interaction
-RestrictSUIDSGID=true         # Blocks setuid/setgid, seccomp-based
+NoNewPrivileges=true          # Kernel no_new_privs flag (prctl), no mount/cgroup interaction
+RestrictSUIDSGID=true         # Blocks setuid/setgid file creation, no mount/cgroup interaction
 ```
 
 ### Tier 2: Likely safe with cgroup host access (test carefully)

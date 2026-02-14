@@ -20,7 +20,7 @@ SyslogIdentifier=agent-%i
 # Directives are grouped by Docker compatibility tier. See
 # docs/systemd-cgroup-docker-compat.md for the full analysis.
 
-# Tier 1: Safe in Docker (pure seccomp/kernel, no mount/cgroup interaction)
+# Tier 1: Safe in Docker (kernel flags, no mount/cgroup interaction)
 NoNewPrivileges=true
 RestrictSUIDSGID=true
 

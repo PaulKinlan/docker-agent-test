@@ -9,6 +9,7 @@ RUN sed -i 's/^#\?DisableSandbox.*/DisableSandbox/' /etc/pacman.conf || true && 
     pacman -S --noconfirm \
     base-devel \
     git \
+    github-cli \
     vim \
     systemd \
     nodejs \
@@ -19,6 +20,7 @@ RUN sed -i 's/^#\?DisableSandbox.*/DisableSandbox/' /etc/pacman.conf || true && 
     wget \
     jq \
     ripgrep \
+    fd \
     tree \
     openssh \
     unzip \

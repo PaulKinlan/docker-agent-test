@@ -11,7 +11,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Customizable `/etc/skel` files for new users
 - Customizable `/etc/profile.d` scripts for global environment setup
 - Systemd support enabled
-- Development tools: git, python, node (system + nvm), base-devel (gcc, make), curl, wget, jq, ripgrep, tree, openssh, unzip
+- Development tools: git, gh (GitHub CLI), python, node (system + nvm), base-devel (gcc, make), curl, wget, jq, ripgrep, fd, tree, openssh, unzip
 - Node Version Manager (nvm) installed system-wide with LTS pre-installed
 - Multi-LLM API key management (global and per-agent)
 - Support for Anthropic, OpenAI, Google, Mistral, and many other providers
@@ -51,6 +51,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
 │   │   ├── .bashrc        # Default bash configuration
 │   │   ├── .bash_profile  # Default bash login configuration
+│   │   ├── .gitconfig     # Default git configuration (defaultBranch, editor)
 │   │   ├── CLAUDE.md      # Default operating instructions for agents
 │   │   ├── agents.md      # Agent persona configuration template
 │   │   ├── TODO.md        # Starter task list for agents
@@ -259,7 +260,7 @@ Per-agent keys override global keys. See [`scripts/README.md`](scripts/README.md
 
 #### Supported Providers
 
-Anthropic, OpenAI, Google/Gemini, Mistral, Cohere, Groq, Together.ai, Fireworks.ai, Perplexity, Replicate, Hugging Face, AWS Bedrock, Azure OpenAI.
+Anthropic, OpenAI, Google/Gemini, Mistral, Cohere, Groq, Together.ai, Fireworks.ai, Perplexity, Replicate, Hugging Face, AWS Bedrock, Azure OpenAI, GitHub (`GITHUB_TOKEN` / `GH_TOKEN`).
 
 Run `make list-providers` to see all supported provider names.
 

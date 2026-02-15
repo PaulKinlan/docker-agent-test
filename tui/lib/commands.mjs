@@ -501,20 +501,31 @@ export function getPersonaLines() {
 }
 
 export function getReadMailLines(agentName) {
-  // Mail is stored in Maildir format at ~/Maildir/{cur,new}/
+  // Validate agent name to prevent path traversal
+  if (!/^[a-z_][a-z0-9_-]*$/.test(agentName)) {
+    return [{ text: `  Invalid agent name: ${agentName}`, type: "stderr" }];
+  }
+
+  // Mail is stored in Maildir format at ~/Maildir/{new,cur}/
   const maildirBase = resolve(PROJECT_ROOT, "home", agentName, "Maildir");
+  const MAX_MESSAGES = 50;
   const lines = [];
   let messageCount = 0;
+  let totalFiles = 0;
 
   for (const subdir of ["new", "cur"]) {
     const dirPath = resolve(maildirBase, subdir);
     let files;
     try {
-      files = readdirSync(dirPath).filter((f) => !f.startsWith("."));
+      files = readdirSync(dirPath)
+        .filter((f) => !f.startsWith("."))
+        .sort();
     } catch {
       continue;
     }
+    totalFiles += files.length;
     for (const file of files) {
+      if (messageCount >= MAX_MESSAGES) break;
       try {
         const content = readFileSync(resolve(dirPath, file), "utf-8");
         messageCount++;
@@ -537,6 +548,12 @@ export function getReadMailLines(agentName) {
 
   if (messageCount === 0) {
     return [{ text: `  No mail for ${agentName}.`, type: "info" }];
+  }
+  if (totalFiles > MAX_MESSAGES) {
+    lines.push({
+      text: `  (showing ${MAX_MESSAGES} of ${totalFiles} messages)`,
+      type: "info",
+    });
   }
   return lines;
 }

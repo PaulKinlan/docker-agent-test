@@ -573,11 +573,10 @@ An inotify-based watcher that monitors each agent's `~/Maildir/new/` directory f
 Launched via `nohup su` by `create-agent.sh` and `agent-manager.sh` — **not intended to be run manually**. PID tracked at `/run/mail-watcher-<username>.pid`.
 
 **What it does:**
-1. Ensures the `~/Maildir/{new,cur,tmp}` directory structure exists
-2. Processes any pre-existing messages in `new/` (from before the watcher started)
+1. Writes its own PID to `~/.mail-watcher.pid` (for reliable cleanup)
+2. Ensures the `~/Maildir/{new,cur,tmp}` directory structure exists
 3. Watches `~/Maildir/new/` using `inotifywait` for `CREATE` and `MOVED_TO` events
-4. Moves each delivered message to `~/Maildir/cur/` with the standard `:2,` info suffix
-5. Logs each delivery event to stdout (captured by journald)
+4. Logs each delivery event (messages stay in `new/` for the MUA to handle)
 
 **Logs:**
 ```bash

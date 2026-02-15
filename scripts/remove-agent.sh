@@ -44,16 +44,22 @@ fi
 
 echo "Removing agent user: $USERNAME"
 
-# 1. Stop the mail watcher and agent process (PID-based, matches nohup+su launch)
+# 1. Stop the mail watcher and agent process
 echo "  Stopping processes..."
 
-# Stop mail watcher
-if [[ -f "/run/mail-watcher-${USERNAME}.pid" ]]; then
-    WATCHER_PID_VAL="$(cat "/run/mail-watcher-${USERNAME}.pid")"
+# Stop mail watcher — the watcher writes its own PID to ~/.mail-watcher.pid
+# (the /run/ pidfile holds the su wrapper PID, which we also kill)
+WATCHER_SELF_PID="/home/${USERNAME}/.mail-watcher.pid"
+if [[ -f "$WATCHER_SELF_PID" ]]; then
+    WATCHER_PID_VAL="$(cat "$WATCHER_SELF_PID")"
     if kill -0 "$WATCHER_PID_VAL" 2>/dev/null; then
         kill "$WATCHER_PID_VAL" 2>/dev/null || true
         echo "  -> Mail watcher stopped (PID $WATCHER_PID_VAL)"
     fi
+    rm -f "$WATCHER_SELF_PID"
+fi
+if [[ -f "/run/mail-watcher-${USERNAME}.pid" ]]; then
+    kill "$(cat "/run/mail-watcher-${USERNAME}.pid")" 2>/dev/null || true
     rm -f "/run/mail-watcher-${USERNAME}.pid"
 fi
 

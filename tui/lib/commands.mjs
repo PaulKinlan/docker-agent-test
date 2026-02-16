@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getContainerName } from "./container.mjs";
@@ -598,7 +598,21 @@ export function getListPresetsLines() {
 }
 
 export function getPresetInfoLines(file) {
-  const filePath = resolve(PROJECT_ROOT, file);
+  let filePath = resolve(PROJECT_ROOT, file);
+  // Allow bare preset names like "api-design" without "presets/" prefix or ".json" suffix
+  if (!existsSync(filePath)) {
+    const candidates = [
+      resolve(PROJECT_ROOT, "presets", file),
+      resolve(PROJECT_ROOT, "presets", `${file}.json`),
+      resolve(PROJECT_ROOT, `${file}.json`),
+    ];
+    for (const c of candidates) {
+      if (existsSync(c)) {
+        filePath = c;
+        break;
+      }
+    }
+  }
   let data;
   try {
     data = JSON.parse(readFileSync(filePath, "utf-8"));

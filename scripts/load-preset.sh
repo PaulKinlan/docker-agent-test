@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-readonly USAGE="Usage: load-preset.sh <file> [--dry-run] [--skip-existing]"
+readonly USAGE="Usage: load-preset.sh <file> [--dry-run] [--skip-existing] [--check-vars]"
 
 # --- Host/container detection ---
 if [[ ! -f /.dockerenv ]]; then
@@ -60,11 +60,13 @@ fi
 PRESET_FILE=""
 DRY_RUN=false
 SKIP_EXISTING=false
+CHECK_VARS=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)      DRY_RUN=true; shift ;;
         --skip-existing) SKIP_EXISTING=true; shift ;;
+        --check-vars)   CHECK_VARS=true; shift ;;
         -*)
             echo "Error: Unknown option '$1'." >&2
             echo "$USAGE" >&2
@@ -100,6 +102,63 @@ echo "=== Phase 1: Validate ==="
 # unchanged when VAR is unset. Bash parameter expansion handles both
 # ${VAR} and ${VAR:-default} natively.
 RAW=$(cat "$PRESET_FILE")
+
+# --- Check/report environment variables ---
+# Extract ${VAR} and ${VAR:-default} patterns from the raw preset
+declare -A VAR_DEFAULTS=()
+declare -a VAR_NAMES_ORDERED=()
+while IFS= read -r varexpr; do
+    [[ -z "$varexpr" ]] && continue
+    VARNAME="${varexpr%%:-*}"
+    if [[ "$varexpr" == *":-"* ]]; then
+        VARDEFAULT="${varexpr#*:-}"
+    else
+        VARDEFAULT=""
+    fi
+    if [[ -z "${VAR_DEFAULTS[$VARNAME]+isset}" ]]; then
+        VAR_NAMES_ORDERED+=("$VARNAME")
+        VAR_DEFAULTS[$VARNAME]="$VARDEFAULT"
+    fi
+done < <(grep -oP '\$\{\K[A-Z_][A-Z0-9_]*(?::-[^}]*)?' "$PRESET_FILE")
+
+if [[ "$CHECK_VARS" == "true" ]]; then
+    for VARNAME in "${VAR_NAMES_ORDERED[@]}"; do
+        DEFAULT="${VAR_DEFAULTS[$VARNAME]}"
+        CURRENT="${!VARNAME:-}"
+        if [[ -n "$CURRENT" ]]; then
+            echo "  $VARNAME=$CURRENT (set)"
+        elif [[ -n "$DEFAULT" ]]; then
+            echo "  $VARNAME (default: $DEFAULT)"
+        else
+            echo "  $VARNAME (required, no default)"
+        fi
+    done
+    exit 0
+fi
+
+# Check for unset variables and report
+MISSING_REQUIRED=()
+for VARNAME in "${VAR_NAMES_ORDERED[@]}"; do
+    DEFAULT="${VAR_DEFAULTS[$VARNAME]}"
+    CURRENT="${!VARNAME:-}"
+    if [[ -z "$CURRENT" && -z "$DEFAULT" ]]; then
+        MISSING_REQUIRED+=("$VARNAME")
+    elif [[ -z "$CURRENT" && -n "$DEFAULT" ]]; then
+        echo "  -> $VARNAME not set, using default: $DEFAULT"
+    fi
+done
+
+if [[ ${#MISSING_REQUIRED[@]} -gt 0 ]]; then
+    echo "Error: Required variables not set (no default value):" >&2
+    for v in "${MISSING_REQUIRED[@]}"; do
+        echo "  $v" >&2
+    done
+    echo "" >&2
+    echo "Set them before running:" >&2
+    echo "  ${MISSING_REQUIRED[*]}=<value> load-preset.sh $PRESET_FILE" >&2
+    exit 1
+fi
+
 if echo "$RAW" | grep -q '${'; then
     PRESET=$(eval "cat <<__PRESET_EOF__
 $RAW

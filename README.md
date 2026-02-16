@@ -292,10 +292,19 @@ make load-preset FILE=presets/bug-triage.json
 make load-preset FILE=presets/feature-build.json SKIP_EXISTING=1
 ```
 
-**Variable substitution:** Presets use `${VAR}` placeholders in task descriptions and mail bodies. Set them as environment variables before loading:
+**Variable substitution:** Presets use `${VAR:-default}` placeholders in task descriptions and mail bodies. Set them as environment variables before loading. The script reports which defaults are being used and errors on required variables without defaults:
 ```bash
+# Set variables explicitly
 BUG_TITLE="Login timeout" BUG_DESCRIPTION="Users report 30s hangs" \
   make load-preset FILE=presets/bug-triage.json
+
+# Preview which variables a preset uses
+load-preset.sh presets/bug-triage.json --check-vars
+```
+
+**TUI interactive prompting:** When loading a preset via the TUI, you are prompted for each variable before loading. Press Enter to accept the default, or type a value. Variables can also be provided inline:
+```
+load-preset feature-build FEATURE_NAME="Dark mode"
 ```
 
 **Shipped presets (10):**
@@ -316,7 +325,8 @@ BUG_TITLE="Login timeout" BUG_DESCRIPTION="Users report 30s hangs" \
 **TUI commands:**
 ```
 list-presets                          # List all presets with descriptions
-load-preset presets/bug-triage.json   # Load a preset
+load-preset presets/bug-triage.json   # Load a preset (prompts for variables)
+load-preset bug-triage TOPIC="AI"     # Load with inline variable overrides
 preset-info presets/bug-triage.json   # Show agents, tasks, and variables
 ```
 

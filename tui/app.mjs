@@ -3,6 +3,7 @@ import { Box, useApp, useInput } from "ink";
 import StatusBar from "./components/StatusBar.mjs";
 import Output from "./components/Output.mjs";
 import Prompt from "./components/Prompt.mjs";
+import VarPrompt from "./components/VarPrompt.mjs";
 import getBannerLines from "./components/Banner.mjs";
 import { getContainerName, getContainerStatus } from "./lib/container.mjs";
 import { execute } from "./lib/executor.mjs";
@@ -14,7 +15,13 @@ import {
   getReadMailLines,
   getListPresetsLines,
   getPresetInfoLines,
+  COMMANDS,
 } from "./lib/commands.mjs";
+import {
+  resolvePresetPath,
+  extractPresetVars,
+  parseInlineVars,
+} from "./lib/preset-vars.mjs";
 
 let lineId = 0;
 function nextId() {
@@ -28,6 +35,7 @@ export default function App() {
   );
   const [isRunning, setIsRunning] = useState(false);
   const [containerStatus, setContainerStatus] = useState("unknown");
+  const [promptState, setPromptState] = useState(null);
   const childRef = useRef(null);
   const containerName = getContainerName();
 
@@ -56,7 +64,10 @@ export default function App() {
   // Ctrl+C handling
   useInput((input, key) => {
     if (key.ctrl && input === "c") {
-      if (isRunning && childRef.current) {
+      if (promptState) {
+        appendLine("  Preset loading cancelled.", "system");
+        setPromptState(null);
+      } else if (isRunning && childRef.current) {
         childRef.current.kill();
         childRef.current = null;
         setIsRunning(false);
@@ -90,6 +101,33 @@ export default function App() {
     [appendLine],
   );
 
+  const runProcessWithEnv = useCallback(
+    (cmd, args, extraEnv) => {
+      setIsRunning(true);
+      const child = execute(
+        cmd,
+        args,
+        {
+          onStdout: (line) => appendLine(line, "stdout"),
+          onStderr: (line) => appendLine(line, "stderr"),
+          onExit: (code) => {
+            if (code === 0) {
+              appendLine("  Done.", "success");
+            } else if (code !== null) {
+              appendLine(`  Exited with code ${code}.`, "error");
+            }
+            setIsRunning(false);
+            childRef.current = null;
+            setContainerStatus(getContainerStatus());
+          },
+        },
+        extraEnv,
+      );
+      childRef.current = child;
+    },
+    [appendLine],
+  );
+
   const runSequence = useCallback(
     async (steps) => {
       for (const stepName of steps) {
@@ -118,6 +156,27 @@ export default function App() {
     },
     [appendLine],
   );
+
+  const handleVarPromptComplete = useCallback(
+    (envMap) => {
+      if (!promptState) return;
+      const { remainingArgs, envOverrides } = promptState;
+      const mergedEnv = { ...envOverrides, ...envMap };
+
+      appendLine("  Variables configured. Loading preset...", "info");
+      setPromptState(null);
+
+      const def = COMMANDS["load-preset"];
+      const { cmd, args: spawnArgs } = def.toSpawn(remainingArgs);
+      runProcessWithEnv(cmd, spawnArgs, mergedEnv);
+    },
+    [promptState, appendLine, runProcessWithEnv],
+  );
+
+  const handleVarPromptCancel = useCallback(() => {
+    appendLine("  Preset loading cancelled.", "system");
+    setPromptState(null);
+  }, [appendLine]);
 
   const handleSubmit = useCallback(
     (input) => {
@@ -205,6 +264,48 @@ export default function App() {
         return;
       }
 
+      // Intercept load-preset to prompt for env vars
+      if (name === "load-preset" && def.toSpawn) {
+        const { envOverrides, remainingArgs } = parseInlineVars(args);
+        const presetFile = remainingArgs[0];
+
+        if (!presetFile) {
+          appendLine("  Error: Preset file is required.", "error");
+          return;
+        }
+
+        const resolvedPath = resolvePresetPath(presetFile);
+        if (!resolvedPath) {
+          appendLine(`  Preset not found: ${presetFile}`, "error");
+          return;
+        }
+
+        const vars = extractPresetVars(resolvedPath);
+
+        // Check which vars still need prompting
+        const needsPrompting = vars.filter(
+          (v) => !(v.name in envOverrides) && !process.env[v.name],
+        );
+
+        if (needsPrompting.length === 0) {
+          // All vars satisfied — spawn immediately
+          const { cmd, args: spawnArgs } = def.toSpawn(remainingArgs);
+          runProcessWithEnv(cmd, spawnArgs, envOverrides);
+        } else {
+          // Enter prompting mode
+          const presetName = presetFile
+            .replace("presets/", "")
+            .replace(".json", "");
+          setPromptState({
+            presetName,
+            vars,
+            envOverrides,
+            remainingArgs,
+          });
+        }
+        return;
+      }
+
       // Spawn process
       if (def.toSpawn) {
         const { cmd, args: spawnArgs } = def.toSpawn(args);
@@ -218,6 +319,7 @@ export default function App() {
       containerName,
       exit,
       runProcess,
+      runProcessWithEnv,
       runSequence,
     ],
   );
@@ -227,6 +329,14 @@ export default function App() {
     { flexDirection: "column" },
     React.createElement(StatusBar, { containerName, status: containerStatus }),
     React.createElement(Output, { lines }),
-    React.createElement(Prompt, { onSubmit: handleSubmit, isRunning }),
+    promptState
+      ? React.createElement(VarPrompt, {
+          presetName: promptState.presetName,
+          vars: promptState.vars,
+          envOverrides: promptState.envOverrides,
+          onComplete: handleVarPromptComplete,
+          onCancel: handleVarPromptCancel,
+        })
+      : React.createElement(Prompt, { onSubmit: handleSubmit, isRunning }),
   );
 }

@@ -55,6 +55,7 @@ help:
 	@echo "  make list-presets                        - List available workflow presets"
 	@echo "  make load-preset FILE=presets/foo.json   - Load a workflow preset"
 	@echo "  make load-preset FILE=... DRY_RUN=1     - Preview without executing"
+	@echo "  FEATURE_NAME=\"My Feature\" make load-preset FILE=presets/feature-build.json - Set preset variables"
 	@echo ""
 	@echo "Testing:"
 	@echo "  make test-systemd                       - Verify systemd service management works"
@@ -288,6 +289,7 @@ list-presets: ## List available workflow presets
 	done
 	@echo ""
 	@echo "Usage: make load-preset FILE=presets/<name>.json [DRY_RUN=1] [SKIP_EXISTING=1]"
+	@echo "       Set env vars for presets: FEATURE_NAME=\"x\" make load-preset FILE=..."
 
 load-preset: ## Load a workflow preset
 ifndef FILE

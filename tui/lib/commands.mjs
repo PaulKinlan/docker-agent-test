@@ -3,6 +3,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getContainerName } from "./container.mjs";
 import { getPersonaNames, getPresetFiles } from "./completions.mjs";
+import { resolvePresetPath, extractPresetVars } from "./preset-vars.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..", "..");
@@ -376,7 +377,7 @@ const COMMANDS = {
   },
   "load-preset": {
     description: "Load a workflow preset",
-    usage: "load-preset <file> [--dry-run] [--skip-existing]",
+    usage: "load-preset <file> [VAR=value ...] [--dry-run] [--skip-existing]",
     category: "Presets",
     minArgs: 1,
     toSpawn: (args) => ({ cmd: "./scripts/load-preset.sh", args }),
@@ -598,20 +599,9 @@ export function getListPresetsLines() {
 }
 
 export function getPresetInfoLines(file) {
-  let filePath = resolve(PROJECT_ROOT, file);
-  // Allow bare preset names like "api-design" without "presets/" prefix or ".json" suffix
-  if (!existsSync(filePath)) {
-    const candidates = [
-      resolve(PROJECT_ROOT, "presets", file),
-      resolve(PROJECT_ROOT, "presets", `${file}.json`),
-      resolve(PROJECT_ROOT, `${file}.json`),
-    ];
-    for (const c of candidates) {
-      if (existsSync(c)) {
-        filePath = c;
-        break;
-      }
-    }
+  const filePath = resolvePresetPath(file);
+  if (!filePath) {
+    return [{ text: `  Preset not found: ${file}`, type: "stderr" }];
   }
   let data;
   try {
@@ -659,18 +649,21 @@ export function getPresetInfoLines(file) {
     lines.push({ text: "", type: "stdout" });
   }
 
-  // Detect ${VAR} placeholders
-  const raw = readFileSync(filePath, "utf-8");
-  const varPattern = /\$\{([^}]+)\}/g;
-  const vars = new Set();
-  let match;
-  while ((match = varPattern.exec(raw)) !== null) {
-    vars.add(match[1]);
-  }
-  if (vars.size > 0) {
-    lines.push({ text: "  Placeholders:", type: "info" });
+  // Variables with defaults and current values
+  const vars = extractPresetVars(filePath);
+  if (vars.length > 0) {
+    lines.push({ text: "  Variables:", type: "info" });
     for (const v of vars) {
-      lines.push({ text: `    \${${v}}`, type: "stdout" });
+      const defHint =
+        v.defaultValue !== null
+          ? ` (default: ${v.defaultValue})`
+          : " (required)";
+      const envValue = process.env[v.name];
+      const setHint = envValue ? ` [set: ${envValue}]` : "";
+      lines.push({
+        text: `    ${v.name}${defHint}${setHint}`,
+        type: "stdout",
+      });
     }
     lines.push({ text: "", type: "stdout" });
   }

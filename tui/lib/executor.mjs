@@ -9,11 +9,11 @@ export function getProjectRoot() {
   return PROJECT_ROOT;
 }
 
-export function execute(cmd, args, { onStdout, onStderr, onExit }) {
+export function execute(cmd, args, { onStdout, onStderr, onExit }, extraEnv = {}) {
   const child = spawn(cmd, args, {
     cwd: PROJECT_ROOT,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
+    env: { ...process.env, ...extraEnv },
   });
 
   child.stdout.on("data", (data) => {

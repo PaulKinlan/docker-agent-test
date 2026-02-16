@@ -396,7 +396,7 @@ Compiles a declarative preset JSON file into a running swarm. Reads the preset a
 **Usage:**
 ```bash
 # Inside the container
-load-preset.sh <file.json> [--dry-run] [--skip-existing]
+load-preset.sh <file.json> [--dry-run] [--skip-existing] [--check-vars]
 
 # From the host via Make
 make load-preset FILE=presets/bug-triage.json [DRY_RUN=1] [SKIP_EXISTING=1]
@@ -406,6 +406,7 @@ make load-preset FILE=presets/bug-triage.json [DRY_RUN=1] [SKIP_EXISTING=1]
 - `<file.json>` (required) — Path to the preset JSON file.
 - `--dry-run` (optional) — Show what would happen without executing. Prints the commands that would be run.
 - `--skip-existing` (optional) — Skip agent creation if the agent user already exists (useful for re-loading presets).
+- `--check-vars` (optional) — List all environment variables used by the preset and exit. Shows which are set, which have defaults, and which are required.
 
 **Compilation phases:**
 1. **Validate** — Parses JSON, checks required fields, validates DAG (no cycles, valid references)
@@ -414,10 +415,28 @@ make load-preset FILE=presets/bug-triage.json [DRY_RUN=1] [SKIP_EXISTING=1]
 4. **Send mail** — Calls `send-mail.sh` for each kickoff message
 5. **Save state** — Records the loaded preset for reference
 
-**Variable substitution:** Presets use `${VAR}` placeholders in task descriptions and mail bodies. These are replaced with environment variables at load time:
+**Variable substitution:** Presets use `${VAR}` and `${VAR:-default}` placeholders in task descriptions and mail bodies. These are replaced with environment variables at load time. Variables with defaults (using `:-` syntax) will use the default when not set. Variables without defaults are required — the script will error if they are not set.
+
+Before expanding, the script reports which variables are using defaults:
+```
+  -> BUG_TITLE not set, using default: Bug Report
+  -> BUG_DESCRIPTION not set, using default: See /home/shared/inputs/bug-report.md
+```
+
+To set variables explicitly:
 ```bash
 BUG_TITLE="Login timeout" BUG_DESCRIPTION="Users report 30s hangs" \
   load-preset.sh presets/bug-triage.json
+```
+
+To preview variables without loading:
+```bash
+load-preset.sh presets/bug-triage.json --check-vars
+```
+
+**TUI interactive prompting:** When using the TUI, `load-preset` automatically detects variables and prompts for each one before loading. You can also provide variables inline:
+```
+load-preset feature-build FEATURE_NAME="Dark mode"
 ```
 
 **Preset JSON format:**

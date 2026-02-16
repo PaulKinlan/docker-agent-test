@@ -176,6 +176,13 @@ chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
 chmod 700 "/home/$USERNAME"
 echo "  -> User created with home at /home/$USERNAME (mode 700)"
 
+# Create Maildir structure for local mail delivery (OpenSMTPD delivers to ~/Maildir/new/)
+MAILDIR="/home/$USERNAME/Maildir"
+mkdir -p "$MAILDIR/new" "$MAILDIR/cur" "$MAILDIR/tmp"
+chown -R "$USERNAME:$USERNAME" "$MAILDIR"
+chmod 700 "$MAILDIR"
+echo "  -> Maildir created at $MAILDIR"
+
 # Regenerate mail aliases (adds new agent to the 'all' group alias)
 /usr/local/bin/sync-aliases.sh
 
@@ -332,6 +339,17 @@ if ! timeout --kill-after=5 30 systemctl is-active basic.target &>/dev/null; the
     echo "  Waiting for systemd boot to complete..."
     timeout --kill-after=5 60 systemctl is-system-running --wait 2>/dev/null || true
 fi
+
+# Start the mail watcher (event-driven mail processing)
+WATCHER_LOG="/var/log/mail-watcher-${USERNAME}.log"
+WATCHER_PID="/run/mail-watcher-${USERNAME}.pid"
+
+echo "  Starting mail watcher..."
+nohup su - "$USERNAME" -c "MAIL=/home/$USERNAME/Maildir /usr/local/bin/mail-watcher.sh" \
+    > "$WATCHER_LOG" 2>&1 &
+WATCHER_PID_VAL=$!
+echo "$WATCHER_PID_VAL" > "$WATCHER_PID"
+echo "  -> Mail watcher started (PID $WATCHER_PID_VAL, log: $WATCHER_LOG)"
 
 # Reload systemd to pick up the new service instance
 systemctl daemon-reload

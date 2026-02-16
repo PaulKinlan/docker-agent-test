@@ -79,15 +79,20 @@ You receive work assignments via two channels:
 
 ### Checking email
 
+Mail is delivered in Maildir format to `~/Maildir/`. A mail watcher service moves new messages from `new/` to `cur/` automatically.
+
 ```bash
 # List message headers (non-interactive)
-mail -H
+mail -f ~/Maildir -H
 
 # Read a specific message by number
-echo "p 1" | mail
+echo "p 1" | mail -f ~/Maildir
 
 # Read all messages
-echo "p *" | mail
+echo "p *" | mail -f ~/Maildir
+
+# List raw message files (each file is a complete email)
+ls ~/Maildir/cur/
 ```
 
 ### Processing email
@@ -108,7 +113,7 @@ Each cycle, follow this order:
 
 1. Check the task board: `task.sh ready --owner "$(whoami)"`
 2. If a task is ready, start it (`task.sh update <id> --status in_progress`) and work on it
-3. Check email: `mail -H`
+3. Check email: `mail -f ~/Maildir -H`
 4. Process any mail (add to TODO.md, reply, etc.)
 5. Check personal `TODO.md` for any remaining items
 6. Check `~/.claude/skills/` for relevant procedures

@@ -39,8 +39,8 @@ Use this skill when a new request, issue, or task arrives that needs to be class
 ### 1. Read the Incoming Request
 
 ```bash
-# Read from mail
-mail -H 2>/dev/null | tail -20
+# Read from mail (Maildir format)
+mail -f ~/Maildir -H 2>/dev/null | tail -20
 
 # Or read from task board (unassigned tasks)
 bash /home/shared/scripts/task.sh list --status pending 2>/dev/null | jq '

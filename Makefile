@@ -10,7 +10,7 @@ help:
 	@echo "  make logs                   - View container logs"
 	@echo "  make clean                  - Remove image and cleanup"
 	@echo "  make reset                  - Full reset: stop container, remove image, wipe all data"
-	@echo "  make soft-reset             - Remove all agents, clear logs and mail (container stays running)"
+	@echo "  make soft-reset             - Remove all agents and clear logs (container stays running)"
 	@echo ""
 	@echo "Agent management (container must be running):"
 	@echo "  make create-agent NAME=foo              - Create agent with base persona"
@@ -92,15 +92,14 @@ clean: down
 	docker rmi agent-host:latest || true
 	@echo "Note: home directory contents preserved in ./home/"
 
-soft-reset: ## Remove all agents, clear logs and mail (container stays running)
+soft-reset: ## Remove all agents and clear logs (container stays running)
 	docker compose exec -T agent-host /usr/local/bin/soft-reset.sh --yes
 
-reset: down ## Full reset: stop container, remove image, wipe home/log/mail
+reset: down ## Full reset: stop container, remove image, wipe home/log
 	docker rmi agent-host:latest || true
 	sudo find ./home -mindepth 1 ! -name '.gitkeep' -delete
 	sudo find ./log -mindepth 1 ! -name '.gitkeep' -delete
-	sudo find ./mail -mindepth 1 ! -name '.gitkeep' -delete
-	@echo "Reset complete. All agent data, logs, and mail removed."
+	@echo "Reset complete. All agent data (including Maildir) and logs removed."
 
 # --- Agent management ---
 

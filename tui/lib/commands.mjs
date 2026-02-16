@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getContainerName } from "./container.mjs";
@@ -143,7 +143,7 @@ const COMMANDS = {
     builtin: true,
   },
   "soft-reset": {
-    description: "Remove all agents, clear logs and mail",
+    description: "Remove all agents and clear logs",
     category: "Agents",
     toSpawn: () => ({ cmd: "./scripts/soft-reset.sh", args: ["--yes"] }),
   },
@@ -501,16 +501,61 @@ export function getPersonaLines() {
 }
 
 export function getReadMailLines(agentName) {
-  const mailPath = resolve(PROJECT_ROOT, "mail", agentName);
-  try {
-    const content = readFileSync(mailPath, "utf-8");
-    if (!content.trim()) {
-      return [{ text: `  No mail for ${agentName}.`, type: "info" }];
-    }
-    return content.split("\n").map((line) => ({ text: line, type: "stdout" }));
-  } catch {
-    return [{ text: `  No mailbox found for ${agentName}.`, type: "info" }];
+  // Validate agent name to prevent path traversal
+  if (!/^[a-z_][a-z0-9_-]*$/.test(agentName)) {
+    return [{ text: `  Invalid agent name: ${agentName}`, type: "stderr" }];
   }
+
+  // Mail is stored in Maildir format at ~/Maildir/{new,cur}/
+  const maildirBase = resolve(PROJECT_ROOT, "home", agentName, "Maildir");
+  const MAX_MESSAGES = 50;
+  const lines = [];
+  let messageCount = 0;
+  let totalFiles = 0;
+
+  for (const subdir of ["new", "cur"]) {
+    const dirPath = resolve(maildirBase, subdir);
+    let files;
+    try {
+      files = readdirSync(dirPath)
+        .filter((f) => !f.startsWith("."))
+        .sort();
+    } catch {
+      continue;
+    }
+    totalFiles += files.length;
+    for (const file of files) {
+      if (messageCount >= MAX_MESSAGES) break;
+      try {
+        const content = readFileSync(resolve(dirPath, file), "utf-8");
+        messageCount++;
+        const label = subdir === "new" ? " [NEW]" : "";
+        lines.push({
+          text: `--- Message ${messageCount}${label} ---`,
+          type: "info",
+        });
+        lines.push(
+          ...content
+            .split("\n")
+            .map((line) => ({ text: line, type: "stdout" })),
+        );
+        lines.push({ text: "", type: "stdout" });
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  if (messageCount === 0) {
+    return [{ text: `  No mail for ${agentName}.`, type: "info" }];
+  }
+  if (totalFiles > MAX_MESSAGES) {
+    lines.push({
+      text: `  (showing ${MAX_MESSAGES} of ${totalFiles} messages)`,
+      type: "info",
+    });
+  }
+  return lines;
 }
 
 export function getListPresetsLines() {

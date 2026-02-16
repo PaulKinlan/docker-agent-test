@@ -76,8 +76,8 @@ Use this skill when an incident, issue, or anomaly report arrives and needs to b
 ### 1. Read the Incident Report
 
 ```bash
-# Read from incoming mail
-mail -H 2>/dev/null | tail -20
+# Read from incoming mail (Maildir format)
+mail -f ~/Maildir -H 2>/dev/null | tail -20
 
 # Or read from a file
 INCIDENT_FILE="${1:-/home/shared/inbox/incident.txt}"

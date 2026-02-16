@@ -180,5 +180,16 @@ while true; do
         exit 1
     fi
 
-    sleep "$current_interval"
+    # Wait for next cycle — use inotifywait to wake immediately on new mail
+    # instead of sleeping the full interval. Falls back to plain sleep if
+    # inotifywait is unavailable or Maildir doesn't exist.
+    MAILDIR_NEW="$HOME/Maildir/new"
+    if command -v inotifywait &>/dev/null && [[ -d "$MAILDIR_NEW" ]]; then
+        log "Waiting up to ${current_interval}s (or until new mail arrives)"
+        if inotifywait -t "$current_interval" -e create -e moved_to "$MAILDIR_NEW" 2>/dev/null; then
+            log "Woke up: new mail detected"
+        fi
+    else
+        sleep "$current_interval"
+    fi
 done

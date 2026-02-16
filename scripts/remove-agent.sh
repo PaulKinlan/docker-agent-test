@@ -4,9 +4,10 @@
 # Usage: remove-agent.sh <username> [--keep-home]
 #
 # This script:
-#   1. Stops and disables the agent@<username> systemd service
-#   2. Removes the Linux user
-#   3. Optionally preserves the home directory (--keep-home)
+#   1. Stops the mail watcher process (PID-based)
+#   2. Stops and disables the agent@<username> systemd service
+#   3. Removes the Linux user
+#   4. Optionally preserves the home directory (--keep-home)
 
 set -euo pipefail
 
@@ -44,10 +45,25 @@ fi
 
 echo "Removing agent user: $USERNAME"
 
-# 1. Stop and disable the agent service
+# 1. Stop the mail watcher (PID-based — not managed by systemd)
+echo "  Stopping mail watcher..."
+WATCHER_SELF_PID="/home/${USERNAME}/.mail-watcher.pid"
+if [[ -f "$WATCHER_SELF_PID" ]]; then
+    WATCHER_PID_VAL="$(cat "$WATCHER_SELF_PID")"
+    if kill -0 "$WATCHER_PID_VAL" 2>/dev/null; then
+        kill "$WATCHER_PID_VAL" 2>/dev/null || true
+        echo "  -> Mail watcher stopped (PID $WATCHER_PID_VAL)"
+    fi
+    rm -f "$WATCHER_SELF_PID"
+fi
+if [[ -f "/run/mail-watcher-${USERNAME}.pid" ]]; then
+    kill "$(cat "/run/mail-watcher-${USERNAME}.pid")" 2>/dev/null || true
+    rm -f "/run/mail-watcher-${USERNAME}.pid"
+fi
+
+# 2. Stop and disable the agent service via systemd
 echo "  Checking service status..."
 if timeout --kill-after=5 5 systemctl is-enabled "agent@${USERNAME}.service" &>/dev/null; then
-    # Use timeout with --kill-after to prevent hanging if systemd D-Bus is slow inside Docker
     echo "  Stopping agent@${USERNAME}.service..."
     timeout --kill-after=5 10 systemctl stop "agent@${USERNAME}.service" 2>/dev/null || true
     echo "  Disabling agent@${USERNAME}.service..."
@@ -57,7 +73,7 @@ else
     echo "  -> No active service found (skipping)"
 fi
 
-# 2. Find persona groups the user belongs to (excluding agents and their primary group)
+# 3. Find persona groups the user belongs to (excluding agents and their primary group)
 #    so we can clean up empty groups after removal.
 PERSONA_GROUPS=""
 USER_GROUPS=$(id -Gn "$USERNAME" 2>/dev/null || true)
@@ -67,7 +83,7 @@ for GRP in $USER_GROUPS; do
     PERSONA_GROUPS="$PERSONA_GROUPS $GRP"
 done
 
-# 3. Remove the user
+# 4. Remove the user
 if [[ "$KEEP_HOME" == true ]]; then
     userdel "$USERNAME"
     echo "  -> User removed (home directory preserved at /home/$USERNAME)"
@@ -76,7 +92,7 @@ else
     echo "  -> User and home directory removed"
 fi
 
-# 4. Clean up empty persona groups
+# 5. Clean up empty persona groups
 for GRP in $PERSONA_GROUPS; do
     MEMBERS=$(getent group "$GRP" 2>/dev/null | cut -d: -f4)
     if [[ -z "$MEMBERS" ]]; then

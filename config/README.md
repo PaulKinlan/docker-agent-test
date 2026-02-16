@@ -142,6 +142,8 @@ Procedural instructions with real, runnable commands...
 
 Files in this directory are copied to `/etc/smtpd/` in the container. Used for mail alias configuration.
 
+OpenSMTPD is configured for **Maildir delivery** — each message is delivered as a separate file to `~/Maildir/new/`. A per-agent `mail-watcher.sh` process (inotify-based) monitors for new deliveries and logs them. Messages stay in `new/` until the agent reads them via s-nail (which moves them to `cur/`, following standard Maildir semantics). The agent loop uses `inotifywait` to wake immediately on new mail instead of polling.
+
 **Current files:**
 - `aliases.static` — Custom per-agent mail aliases (merged into the generated aliases file)
 
@@ -159,6 +161,16 @@ lead: alice              # Mail to 'lead' delivers to alice
 ```
 
 After editing, rebuild the Docker image and run `make sync-aliases` to apply changes.
+
+### `systemd/` - Systemd Service Definitions
+
+Systemd unit files for agent lifecycle management. Copied to `/etc/systemd/system/` in the container.
+
+**Current files:**
+- `agent@.service` — Per-agent service template (runs `run-agent.sh` as the agent user). Sets `MAIL=/home/%i/Maildir` for Maildir-based mail reading. **Note:** In Docker, agents are launched via `nohup su` instead of systemd due to cgroup v2 issues (see `create-agent.sh`).
+- `mail-watcher@.service` — Per-agent Maildir watcher template (for non-Docker deployments). In Docker, the watcher is launched via `nohup su` by `create-agent.sh` and `agent-manager.sh`. The watcher writes its own PID to `~/.mail-watcher.pid` for reliable cleanup.
+- `agent-manager.service` — Boot-time reconciliation (ensures all agents have running services and mail watchers)
+- `api-keys-sync.service` — Boot-time API key sync (merges host environment into global keys)
 
 ### `skel/` - User Template Files
 
@@ -192,7 +204,7 @@ Files in this directory are copied to `/etc/skel/` in the container. These files
 Files in this directory are copied to `/etc/profile.d/` in the container. These scripts are executed for all users during login.
 
 **Current files:**
-- `agent-env.sh` - Global agent environment setup (platform vars, umask, PATH)
+- `agent-env.sh` - Global agent environment setup (platform vars, umask, PATH, MAIL)
 - `nvm.sh` - Loads nvm (Node Version Manager) for all users
 
 **How to use:**

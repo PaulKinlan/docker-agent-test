@@ -47,6 +47,33 @@ for USERNAME in $AGENTS_MEMBERS; do
         continue
     fi
 
+    # Ensure Maildir structure exists (may be missing if home was preserved from before migration)
+    MAILDIR="/home/$USERNAME/Maildir"
+    if [[ ! -d "$MAILDIR/new" ]]; then
+        mkdir -p "$MAILDIR/new" "$MAILDIR/cur" "$MAILDIR/tmp"
+        chown -R "$USERNAME:$USERNAME" "$MAILDIR"
+        chmod 700 "$MAILDIR"
+        echo "  [INIT] $USERNAME — created Maildir"
+
+        # Migrate legacy mbox mail if it exists (one-time, from pre-Maildir installs)
+        MBOX_FILE="/var/spool/mail/$USERNAME"
+        if [[ -f "$MBOX_FILE" ]] && [[ -s "$MBOX_FILE" ]]; then
+            # Each mbox message starts with "From " at column 0.
+            # Split into individual Maildir files using awk.
+            awk -v cur="$MAILDIR/cur" '
+                /^From / {
+                    if (out) close(out)
+                    msgnum++
+                    out = cur "/" systime() "." msgnum ".migrated:2,"
+                    next
+                }
+                out { print > out }
+            ' "$MBOX_FILE"
+            chown -R "$USERNAME:$USERNAME" "$MAILDIR/cur"
+            echo "  [MIGR] $USERNAME — imported legacy mbox mail"
+        fi
+    fi
+
     # Enable and start (idempotent, with timeout to avoid D-Bus hangs)
     # --kill-after sends SIGKILL if SIGTERM doesn't work (e.g., stuck D-Bus call)
     echo "  Enabling agent@${USERNAME}.service..."
@@ -60,6 +87,26 @@ for USERNAME in $AGENTS_MEMBERS; do
         echo "  [FAIL] $USERNAME — agent failed to queue start"
         ((FAILED++))
     fi
+
+    # Start mail watcher via direct launch (same nohup+su pattern as create-agent.sh)
+    WATCHER_LOG="/var/log/mail-watcher-${USERNAME}.log"
+    WATCHER_WRAPPER_PID="/run/mail-watcher-${USERNAME}.pid"
+    WATCHER_SELF_PID="/home/${USERNAME}/.mail-watcher.pid"
+
+    # Kill stale watcher from a previous boot (try the self-written PID first)
+    if [[ -f "$WATCHER_SELF_PID" ]]; then
+        kill "$(cat "$WATCHER_SELF_PID")" 2>/dev/null || true
+        rm -f "$WATCHER_SELF_PID"
+    fi
+    if [[ -f "$WATCHER_WRAPPER_PID" ]]; then
+        kill "$(cat "$WATCHER_WRAPPER_PID")" 2>/dev/null || true
+        rm -f "$WATCHER_WRAPPER_PID"
+    fi
+
+    nohup su - "$USERNAME" -c "MAIL=/home/$USERNAME/Maildir /usr/local/bin/mail-watcher.sh" \
+        > "$WATCHER_LOG" 2>&1 &
+    echo "$!" > "$WATCHER_WRAPPER_PID"
+    echo "  [OK]   $USERNAME — mail watcher started"
 done
 
 # Regenerate mail aliases to ensure they match current agent membership

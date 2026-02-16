@@ -1,12 +1,12 @@
 #!/bin/bash
-# soft-reset.sh — Remove all agents, clear logs and mail inside the container
+# soft-reset.sh — Remove all agents and clear logs inside the container
 #
 # Usage: soft-reset.sh [--yes]
 #
 # This script:
 #   1. Removes all agent users (stops services, deletes users and home dirs)
 #   2. Clears the systemd journal
-#   3. Empties the mail spool
+#   3. Mail is automatically removed with home directories (Maildir format)
 
 set -euo pipefail
 
@@ -33,7 +33,7 @@ if [[ "$SKIP_CONFIRM" != true ]]; then
     echo "This will:"
     echo "  - Remove all agent users (services, accounts, and home directories)"
     echo "  - Clear all systemd journal logs"
-    echo "  - Empty the mail spool"
+    echo "  - Clear mail (stored in home directories as Maildir)"
     echo ""
     read -r -p "Continue? [y/N] " response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
@@ -62,10 +62,10 @@ echo "Clearing systemd journal..."
 journalctl --rotate --vacuum-time=1s 2>/dev/null || true
 echo "  -> Journal cleared"
 
-# --- Empty mail spool ---
-echo "Clearing mail spool..."
-rm -f /var/spool/mail/*
-echo "  -> Mail spool cleared"
+# --- Note: mail cleanup ---
+# Mail is now stored in ~/Maildir/ (Maildir format) inside each agent's home directory.
+# It was already removed when the agent's home directory was deleted above.
+echo "  -> Mail cleared (Maildir removed with home directories)"
 
 echo ""
 echo "Soft reset complete."

@@ -27,6 +27,8 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
 │   ├── profile.d/              # Global environment scripts -> /etc/profile.d
 │   ├── personas/               # Agent persona definitions -> /etc/agent-personas
 │   └── systemd/                # Systemd service files
+├── docs/                       # Technical reference documentation
+│   └── systemd-cgroup-docker-compat.md  # systemd + cgroup v2 + Docker research
 └── scripts/
     ├── README.md               # Scripts documentation
     ├── create-agent.sh         # Create agent user (with optional --persona, --instructions, --api-key)
@@ -37,7 +39,8 @@ This is a Docker-based multi-user agent hosting system built on Arch Linux. It r
     ├── snapshot-agents.sh      # Snapshot agent state (host-only)
     ├── run-agent.sh            # Agent entrypoint (called by systemd)
     ├── agent-manager.sh        # Boot-time service reconciliation
-    └── sync-api-keys.sh        # Boot-time API key environment sync
+    ├── sync-api-keys.sh        # Boot-time API key environment sync
+    └── test-systemd-services.sh # Verify systemd service management works
 ```
 
 ## Documentation Requirements

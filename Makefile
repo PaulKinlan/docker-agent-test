@@ -1,4 +1,4 @@
-.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list artifact-register artifact-get list-presets load-preset
+.PHONY: help build up down restart shell logs clean reset soft-reset create-agent remove-agent update-agent list-agents list-personas agent-logs agent-shell mail sync-aliases set-api-key get-api-keys remove-api-key clear-api-keys list-providers snapshot-init snapshot snapshot-log snapshot-diff snapshot-status tui install-tui task-add task-list task-ready task-update task-graph swarm-status swarm-stop health artifact-list artifact-register artifact-get list-presets load-preset test-systemd
 
 help:
 	@echo "Container management:"
@@ -55,6 +55,10 @@ help:
 	@echo "  make list-presets                        - List available workflow presets"
 	@echo "  make load-preset FILE=presets/foo.json   - Load a workflow preset"
 	@echo "  make load-preset FILE=... DRY_RUN=1     - Preview without executing"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make test-systemd                       - Verify systemd service management works"
+	@echo "  make test-systemd VERBOSE=1             - Verbose output with diagnostics"
 	@echo ""
 	@echo "Interactive TUI:"
 	@echo "  make install-tui                        - Install TUI dependencies (first time)"
@@ -292,6 +296,11 @@ endif
 	./scripts/load-preset.sh $(FILE) \
 		$(if $(filter 1,$(DRY_RUN)),--dry-run) \
 		$(if $(filter 1,$(SKIP_EXISTING)),--skip-existing)
+
+# --- Testing ---
+
+test-systemd: ## Verify systemd service management works in the container
+	docker compose exec -T agent-host /usr/local/bin/test-systemd-services.sh $(if $(filter 1,$(VERBOSE)),--verbose)
 
 # --- Interactive TUI ---
 

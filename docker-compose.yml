@@ -13,12 +13,19 @@ services:
       - ./log:/var/log
       # Mount shared artifacts directory so they are visible on the host
       - ./shared:/home/shared
+      # Mount cgroup filesystem read-write so systemd can create child cgroups
+      # for agent services (required for systemctl start, MemoryMax, CPUQuota).
+      # See docs/systemd-cgroup-docker-compat.md for background.
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
     # Systemd needs these tmpfs mounts
     tmpfs:
       - /run
       - /run/lock
-    # Required for systemd
+    # Required for systemd — privileged mode grants capabilities needed by PID 1.
+    # cgroup: host shares the VM's cgroup namespace so systemd can create child
+    # cgroups for services. See docs/systemd-cgroup-docker-compat.md.
     privileged: true
+    cgroup: host
     # Keep container alive
     stdin_open: true
     tty: true
@@ -53,6 +60,9 @@ services:
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
       # Z.ai
       - ZAI_API_KEY=${ZAI_API_KEY:-}
+      # GitHub (for gh CLI and git HTTPS authentication)
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GH_TOKEN=${GH_TOKEN:-}
       # Agent loop configuration
       - AGENT_CYCLE_INTERVAL=${AGENT_CYCLE_INTERVAL:-}
       - AGENT_MODEL=${AGENT_MODEL:-}

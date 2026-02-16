@@ -17,35 +17,38 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=agent-%i
 
-# ── Security hardening (disabled for Docker compatibility) ───
-# Many systemd security and resource directives fail silently inside
-# Docker containers, causing services to go straight to inactive (dead)
-# with no journal output. Common causes:
-#   - Cgroup: MemoryMax/CPUQuota require cgroup delegation that Docker
-#     does not always provide to the container's systemd.
-#   - Mount namespaces: ProtectSystem/PrivateTmp conflict with Docker's
-#     overlay2 filesystem and mount setup.
-#   - Seccomp: RestrictAddressFamilies/RestrictSUIDSGID can conflict
-#     with the container's seccomp/namespace configuration.
+# ── Security hardening ───────────────────────────────────────────────
+# Directives are grouped by Docker compatibility tier. See
+# docs/systemd-cgroup-docker-compat.md for the full analysis.
+
+# Tier 1: Safe in Docker (kernel flags, no mount/cgroup interaction)
+NoNewPrivileges=true
+RestrictSUIDSGID=true
+
+# Tier 2: Requires cgroup write access (enabled by cgroup:host + rw mount
+# in docker-compose.yml). These enforce per-agent resource limits.
+MemoryMax=512M
+CPUQuota=50%
+
+# ── Tier 3 & 4: Disabled for Docker compatibility ───────────────────
+# These directives conflict with Docker's overlay2 filesystem, mount
+# setup, or privileged container mode. The Docker container boundary
+# already provides equivalent isolation. Agents still run as
+# unprivileged users with no sudo access.
 #
-# The Docker container boundary already provides process and filesystem
-# isolation. Agents still run as unprivileged users with no sudo access.
-#
-# To re-enable outside Docker, uncomment:
-# NoNewPrivileges=true
+# Mount namespace conflicts (Tier 3):
 # ProtectSystem=full
 # PrivateTmp=true
-# CapabilityBoundingSet=
-# AmbientCapabilities=
-# RestrictSUIDSGID=true
-# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# RestrictNamespaces=true
+#
+# Kernel/capability restrictions — conflict with privileged mode (Tier 4):
 # ProtectKernelTunables=true
 # ProtectKernelModules=true
 # ProtectControlGroups=true
 # ProtectKernelLogs=true
-# RestrictNamespaces=true
-# MemoryMax=512M
-# CPUQuota=50%
+# CapabilityBoundingSet=
+# AmbientCapabilities=
+# RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 [Install]
 WantedBy=multi-user.target

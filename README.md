@@ -11,7 +11,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 - Customizable `/etc/skel` files for new users
 - Customizable `/etc/profile.d` scripts for global environment setup
 - Systemd support enabled
-- Development tools: git, python, node (system + nvm), base-devel (gcc, make), curl, wget, jq, ripgrep, tree, openssh, unzip
+- Development tools: git, gh (GitHub CLI), python, node (system + nvm), base-devel (gcc, make), curl, wget, jq, ripgrep, fd, tree, openssh, unzip
 - Node Version Manager (nvm) installed system-wide with LTS pre-installed
 - Multi-LLM API key management (global and per-agent)
 - Support for Anthropic, OpenAI, Google, Mistral, and many other providers
@@ -50,6 +50,7 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── skel/              # Files copied to /etc/skel (template for new users)
 │   │   ├── .bashrc        # Default bash configuration
 │   │   ├── .bash_profile  # Default bash login configuration
+│   │   ├── .gitconfig     # Default git configuration (defaultBranch, editor)
 │   │   ├── CLAUDE.md      # Default operating instructions for agents
 │   │   ├── agents.md      # Agent persona configuration template
 │   │   ├── TODO.md        # Starter task list for agents
@@ -73,6 +74,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
 │   ├── project-kickoff.json    # Design → scaffold+CI → tests → readme
 │   ├── migration-plan.json     # Assess → research → migrate → test → guide
 │   └── incident-response.json  # Triage → diagnose → hotfix → verify → postmortem
+├── docs/                  # Technical reference documentation
+│   └── systemd-cgroup-docker-compat.md  # systemd + cgroup v2 + Docker Desktop research
 ├── shared/                # Shared artifacts directory (mounted as /home/shared)
 ├── tui/                   # Interactive TUI (Node.js + Ink, host-side only)
 │   ├── package.json       # Dependencies (ink, react)
@@ -102,7 +105,8 @@ A Docker setup using the latest Arch Linux with customizable configuration files
     ├── agent-loop.mjs     # Single agentic work cycle (Claude Agent SDK)
     ├── run-agent.sh       # Agent entrypoint (run by systemd)
     ├── agent-manager.sh   # Boot-time service reconciliation
-    └── sync-api-keys.sh   # Boot-time API key environment sync
+    ├── sync-api-keys.sh   # Boot-time API key environment sync
+    └── test-systemd-services.sh  # Verify systemd service management works
 ```
 
 ## Usage
@@ -257,15 +261,15 @@ Per-agent keys override global keys. See [`scripts/README.md`](scripts/README.md
 
 #### Supported Providers
 
-Anthropic, OpenAI, Google/Gemini, Mistral, Cohere, Groq, Together.ai, Fireworks.ai, Perplexity, Replicate, Hugging Face, AWS Bedrock, Azure OpenAI.
+Anthropic, OpenAI, Google/Gemini, Mistral, Cohere, Groq, Together.ai, Fireworks.ai, Perplexity, Replicate, Hugging Face, AWS Bedrock, Azure OpenAI, GitHub (`GITHUB_TOKEN` / `GH_TOKEN`).
 
 Run `make list-providers` to see all supported provider names.
 
 #### How Agents Run
 
-Each agent runs as a background process (`nohup su - <user> -c run-agent.sh`) launched by `create-agent.sh`, with PID tracked at `/run/agent-<username>.pid`. A companion `mail-watcher.sh` process watches the agent's `~/Maildir/new/` directory using inotify and logs deliveries. The agent loop uses `inotifywait` to wake immediately when new mail arrives instead of waiting for the next cycle. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`) but new mail triggers an immediate cycle. All output is logged to `/var/log/agent-<username>.log` (agent) and `/var/log/mail-watcher-<username>.log` (watcher).
+Each agent runs as a systemd service (`agent@<username>.service`) managed by `create-agent.sh`. A companion `mail-watcher.sh` process (launched via `nohup su`) watches the agent's `~/Maildir/new/` directory using inotify and logs deliveries. The agent loop uses `inotifywait` to wake immediately when new mail arrives instead of waiting for the next cycle. On each cycle, the agent invokes `agent-loop.mjs` (powered by the Claude Agent SDK) which checks for new mail, processes pending tasks from `TODO.md`, reports results, and updates `MEMORY.md`. Cycles run every 5 minutes by default (configurable via `AGENT_CYCLE_INTERVAL`) but new mail triggers an immediate cycle. Agent output goes to the systemd journal; mail watcher output is logged to `/var/log/mail-watcher-<username>.log`.
 
-At container boot, `agent-manager.sh` reconciles all users in the `agents` group — starting agent loops and mail watchers via the same `nohup su` mechanism, and migrating any legacy mbox mail into Maildir format.
+At container boot, `agent-manager.sh` reconciles all users in the `agents` group — enabling agent services via systemd, launching mail watchers via `nohup su`, and migrating any legacy mbox mail into Maildir format.
 
 ### Workflow Presets
 

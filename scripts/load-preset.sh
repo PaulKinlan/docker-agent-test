@@ -38,9 +38,10 @@ if [[ ! -f /.dockerenv ]]; then
         echo "Error: File not found: $PRESET_FILE" >&2
         exit 1
     fi
-    # Copy preset to a temp location inside container
+    # Copy preset into container via stdin (docker cp targets the overlay
+    # filesystem which is hidden by systemd's tmpfs mount on /tmp)
     TMPNAME="/tmp/preset-$$.json"
-    docker cp "$PRESET_FILE" "$CONTAINER:$TMPNAME"
+    docker exec -i "$CONTAINER" tee "$TMPNAME" > /dev/null < "$PRESET_FILE"
     # Forward remaining args, replacing the file path with the container-side path
     shift
     # Pass environment variables that might be needed for envsubst

@@ -61,6 +61,7 @@ Files in this directory are copied to `/etc/agent-personas/` in the container. U
 - `manager.md` — Team coordination and task delegation
 - `ops.md` — Request triage and routing to specialists
 - `planner.md` — Goal-to-spec breakdown with acceptance criteria
+- `product-manager.md` — Product vision, feature prioritization, and user requirements
 - `qa.md` — Testing, edge cases, and bug reporting
 - `researcher.md` — Research and information gathering
 - `reviewer.md` — Code review

@@ -156,18 +156,18 @@ if [[ -n "$PERSONA" ]]; then
 fi
 # Create persona group if it doesn't exist, so users with the same persona
 # can be addressed collectively (e.g., mail to coder-all).
-GROUPS="agents"
+AGENT_GROUPS="agents"
 if [[ -n "$PERSONA" ]]; then
     PERSONA_GROUP="${PERSONA%.md}"
     if ! getent group "$PERSONA_GROUP" &>/dev/null; then
         groupadd "$PERSONA_GROUP"
         echo "  -> Created persona group: $PERSONA_GROUP"
     fi
-    GROUPS="agents,$PERSONA_GROUP"
+    AGENT_GROUPS="agents,$PERSONA_GROUP"
 fi
 # Create user without -m (useradd -m fails on Docker bind mounts from macOS
 # due to VirtioFS permission mapping issues). We create the home dir manually.
-useradd -M -s /bin/bash -G "$GROUPS" -c "$GECOS" -d "/home/$USERNAME" "$USERNAME"
+useradd -M -s /bin/bash -G "$AGENT_GROUPS" -c "$GECOS" -d "/home/$USERNAME" "$USERNAME"
 
 # Manually create home directory and populate from /etc/skel
 mkdir -p "/home/$USERNAME"

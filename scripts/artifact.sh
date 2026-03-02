@@ -82,8 +82,9 @@ cmd_register() {
     timestamp="$(date -Iseconds)"
 
     # Append to manifest (JSONL format)
-    printf '{"path":"%s","producer":"%s","description":"%s","size_bytes":%s,"created_at":"%s"}\n' \
-        "$path" "$producer" "$description" "$size" "$timestamp" >> "$MANIFEST"
+    jq -cn --arg p "$path" --arg pr "$producer" --arg d "$description" \
+        --argjson s "$size" --arg t "$timestamp" \
+        '{path:$p,producer:$pr,description:$d,size_bytes:$s,created_at:$t}' >> "$MANIFEST"
 
     echo "Registered: $path (producer=$producer, size=$size bytes)"
 }
